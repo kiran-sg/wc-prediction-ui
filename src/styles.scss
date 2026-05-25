@@ -1,0 +1,54 @@
+@use '@angular/material' as mat;
+
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: Roboto, "Helvetica Neue", sans-serif;
+  background: #f5f5f5;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 16px;
+  padding-bottom: 80px;
+}
+
+.mat-mdc-card {
+  margin-bottom: 12px;
+  border-radius: 12px !important;
+}
+
+.mat-mdc-raised-button {
+  border-radius: 24px !important;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.mt-8 { margin-top: 8px; }
+.mt-16 { margin-top: 16px; }
+.mb-8 { margin-bottom: 8px; }
+.mb-16 { margin-bottom: 16px; }
+
+// Smooth scrolling for mobile
+.cdk-virtual-scroll-viewport {
+  -webkit-overflow-scrolling: touch;
+}
+
+// Snackbar positioning for mobile
+.mat-mdc-snack-bar-container {
+  margin-bottom: 70px !important;
+}
