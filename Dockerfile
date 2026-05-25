@@ -3,7 +3,7 @@
 # ===========================
 
 # Use Node.js 18 as the base image for building the Angular app
-FROM node:18 AS build
+FROM node:22 AS build
 
 # Set the working directory inside the container to `/app`
 WORKDIR /app
