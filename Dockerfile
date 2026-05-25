@@ -19,7 +19,7 @@ RUN npm install
 COPY . .
 
 # Build the Angular project in production mode
-# This generates optimized files in the `dist/ipl-prediction-ui/browser` folder
+# This generates optimized files in the `dist/wc-prediction-ui/browser` folder
 RUN npm run build --configuration=production
 
 # ==============================
@@ -37,7 +37,7 @@ COPY nginx/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy the built Angular app from the previous `build` stage to Nginx's default serving directory
 # `/usr/share/nginx/html` is where Nginx serves static files
-COPY --from=build /app/dist/ipl-prediction-ui/browser /usr/share/nginx/html
+COPY --from=build /app/dist/wc-prediction-ui/browser /usr/share/nginx/html
 
 # Expose port 80 to allow incoming traffic to the Nginx server
 EXPOSE 80 
