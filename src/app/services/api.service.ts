@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { WcMatch, WcPlayer, Prediction, MatchResult, LeaderboardEntry } from '../models/models';
+import { WcMatch, WcPlayer, WcUser, Prediction, MatchResult, LeaderboardEntry } from '../models/models';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -53,5 +53,14 @@ export class ApiService {
 
   getPredictionsByMatch(matchId: string): Observable<{ predictions: Prediction[] }> {
     return this.http.get<{ predictions: Prediction[] }>(`${this.api}/admin/predictions/match`, { params: { matchId } });
+  }
+
+  // Users
+  getUsers(): Observable<WcUser[]> {
+    return this.http.get<WcUser[]>(`${this.api}/users`);
+  }
+
+  createUser(user: { userId: string; name: string; location: string; isAdmin: boolean }): Observable<WcUser> {
+    return this.http.post<WcUser>(`${this.api}/users`, user);
   }
 }

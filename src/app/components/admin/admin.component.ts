@@ -30,7 +30,13 @@ import { WcMatch, WcPlayer, MatchResult, Prediction } from '../../models/models'
     <div class="container">
       <h3>⚙️ Admin</h3>
 
-      <!-- Match selector (shared across tabs) -->
+      <mat-tab-group animationDuration="150ms" class="top-tabs">
+
+        <!-- ═══ TOP TAB: MATCH RESULTS ═══ -->
+        <mat-tab label="Match Results">
+          <div class="tab-content">
+
+      <!-- Match selector -->
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>Select Match</mat-label>
         <mat-icon matPrefix>search</mat-icon>
@@ -220,11 +226,142 @@ import { WcMatch, WcPlayer, MatchResult, Prediction } from '../../models/models'
 
         </mat-tab-group>
       }
+
+          </div>
+        </mat-tab>
+
+        <!-- ═══ TOP TAB: USERS ═══ -->
+        <mat-tab>
+          <ng-template mat-tab-label>
+            Users
+            @if (allUsers.length > 0) {
+              <span class="tab-badge">{{ allUsers.length }}</span>
+            }
+          </ng-template>
+          <div class="tab-content">
+
+            <!-- Add user form -->
+            <mat-card class="section-card add-user-card">
+              <h4><mat-icon>person_add</mat-icon> Add New User</h4>
+              <div class="add-user-form">
+                <!-- Row 1: User ID + Name -->
+                <div class="add-row">
+                  <mat-form-field appearance="outline" class="add-field">
+                    <mat-label>User ID</mat-label>
+                    <input matInput [(ngModel)]="newUser.userId" placeholder="e.g. john01" maxlength="30">
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="add-field">
+                    <mat-label>Name</mat-label>
+                    <input matInput [(ngModel)]="newUser.name" placeholder="Full name" maxlength="60">
+                  </mat-form-field>
+                </div>
+                <!-- Row 2: Location + Role + Button -->
+                <div class="add-row add-row-2">
+                  <mat-form-field appearance="outline" class="add-field-sm">
+                    <mat-label>Location</mat-label>
+                    <mat-select [(ngModel)]="newUser.location">
+                      <mat-option value="TVM">TVM</mat-option>
+                      <mat-option value="Pune">Pune</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                  <mat-radio-group [(ngModel)]="newUser.isAdmin" class="role-group">
+                    <mat-radio-button [value]="false">User</mat-radio-button>
+                    <mat-radio-button [value]="true">Admin</mat-radio-button>
+                  </mat-radio-group>
+                  <button mat-raised-button color="primary" (click)="addUser()"
+                          [disabled]="addingUser || !newUser.userId.trim() || !newUser.name.trim()"
+                          class="add-btn">
+                    {{ addingUser ? 'Adding...' : 'Add User' }}
+                  </button>
+                </div>
+              </div>
+            </mat-card>
+
+            <!-- Search + list -->
+            <div class="user-search-bar">
+              <mat-icon class="search-icon-inline">search</mat-icon>
+              <input class="user-search-input" placeholder="Search by name or user ID..."
+                     [(ngModel)]="allUsersSearch" (ngModelChange)="filterAllUsers()">
+              @if (allUsersSearch) {
+                <button class="clear-search" (click)="allUsersSearch=''; filterAllUsers()">
+                  <mat-icon>close</mat-icon>
+                </button>
+              }
+            </div>
+
+            @if (loadingUsers) {
+              <div class="text-center mt-16">Loading users...</div>
+            } @else {
+              <div class="users-summary">
+                <span class="summary-chip total" [class.active]="locationFilter === ''" (click)="setLocationFilter('')">{{ allUsers.length }} All</span>
+                <span class="summary-chip scored" [class.active]="locationFilter === 'TVM'" (click)="setLocationFilter('TVM')">{{ tvmCount }} TVM</span>
+                <span class="summary-chip q1" [class.active]="locationFilter === 'Pune'" (click)="setLocationFilter('Pune')">{{ puneCount }} Pune</span>
+              </div>
+              @for (u of filteredUsers; track u.userId) {
+                <div class="user-row">
+                  <mat-icon class="user-row-icon">account_circle</mat-icon>
+                  <div class="user-row-info">
+                    <span class="user-row-name">{{ u.name }}</span>
+                    <span class="user-row-meta">{{ u.userId }} · {{ u.location }}</span>
+                  </div>
+                  @if (u.isAdmin) {
+                    <span class="admin-chip">Admin</span>
+                  }
+                </div>
+              }
+              @if (filteredUsers.length === 0 && allUsersSearch) {
+                <div class="empty-preds"><p>No users match "{{ allUsersSearch }}"</p></div>
+              }
+            }
+
+          </div>
+        </mat-tab>
+
+      </mat-tab-group>
     </div>
   `,
   styles: [`
-    h3 { color: #1a237e; margin: 0 0 16px; }
+    h3 { color: #1a237e; margin: 0 0 4px; }
+    .top-tabs { margin-top: 0; }
     .tab-content { padding: 16px 0; }
+
+    /* Add user form */
+    .add-user-card { padding: 16px; margin-bottom: 16px; }
+    .add-user-card h4 { margin: 0 0 12px; color: #1a237e; display: flex; align-items: center; gap: 8px; }
+    .add-user-form { display: flex; flex-direction: column; gap: 8px; }
+    .add-row { display: flex; gap: 8px; align-items: flex-start; }
+    .add-row-2 { align-items: center; flex-wrap: wrap; }
+    .add-field { flex: 1; min-width: 0; }
+    .add-field .mat-mdc-form-field-subscript-wrapper { display: none; }
+    .add-field-sm { width: 110px; flex-shrink: 0; }
+    .add-field-sm .mat-mdc-form-field-subscript-wrapper { display: none; }
+    .role-group { display: flex; gap: 12px; align-items: center; flex: 1; }
+    .add-btn { height: 44px; white-space: nowrap; flex-shrink: 0; }
+    @media (max-width: 420px) {
+      .add-row { flex-direction: column; }
+      .add-field, .add-field-sm { width: 100%; flex: unset; }
+      .add-row-2 { gap: 8px; }
+      .add-btn { width: 100%; }
+    }
+
+    /* User list */
+    .users-summary { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .users-summary .summary-chip { cursor: pointer; transition: all 0.15s; opacity: 0.7; }
+    .users-summary .summary-chip:hover { opacity: 1; }
+    .users-summary .summary-chip.active { opacity: 1; box-shadow: 0 0 0 2px currentColor; }
+    .user-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; background: #fff; border-radius: 10px;
+      margin-bottom: 6px; border: 1px solid #e0e0e0;
+    }
+    .user-row-icon { color: #bdbdbd; font-size: 28px; width: 28px; height: 28px; flex-shrink: 0; }
+    .user-row-info { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .user-row-name { font-size: 14px; font-weight: 600; color: #222; }
+    .user-row-meta { font-size: 11px; color: #999; }
+    .admin-chip {
+      padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: 600;
+      background: #e8eaf6; color: #1a237e; flex-shrink: 0;
+    }
     .section-card { padding: 16px; }
     .section-card h4 { margin: 0 0 12px; color: #1a237e; display: flex; align-items: center; gap: 8px; }
     .result-group { display: flex; flex-direction: column; gap: 8px; }
@@ -359,6 +496,17 @@ export class AdminComponent implements OnInit {
   userSearch = '';
   loadingPredictions = false;
 
+  allUsers: any[] = [];
+  filteredUsers: any[] = [];
+  allUsersSearch = '';
+  locationFilter = '';
+  loadingUsers = false;
+  addingUser = false;
+  newUser = { userId: '', name: '', location: 'TVM', isAdmin: false };
+
+  get tvmCount(): number { return this.allUsers.filter(u => u.location === 'TVM').length; }
+  get puneCount(): number { return this.allUsers.filter(u => u.location === 'Pune').length; }
+
   get scoredCount(): number { return this.predictions.filter(p => p.points != null).length; }
   get q1CorrectCount(): number { return this.predictions.filter(p => this.isQ1Correct(p)).length; }
   get q2CorrectCount(): number { return this.predictions.filter(p => this.isQ2Correct(p)).length; }
@@ -368,6 +516,50 @@ export class AdminComponent implements OnInit {
 
   ngOnInit(): void {
     this.api.getMatches().subscribe(m => { this.matches = m; this.filteredMatches = m; });
+    this.loadUsers();
+  }
+
+  loadUsers(): void {
+    this.loadingUsers = true;
+    this.api.getUsers().subscribe({
+      next: users => {
+        this.allUsers = users.filter(u => !u.isAdmin).sort((a, b) => a.name.localeCompare(b.name));
+        this.filterAllUsers();
+        this.loadingUsers = false;
+      },
+      error: () => { this.loadingUsers = false; }
+    });
+  }
+
+  setLocationFilter(loc: string): void {
+    this.locationFilter = loc;
+    this.filterAllUsers();
+  }
+
+  filterAllUsers(): void {
+    const s = this.allUsersSearch.toLowerCase().trim();
+    this.filteredUsers = this.allUsers.filter(u => {
+      if (this.locationFilter && u.location !== this.locationFilter) return false;
+      if (s && !u.name.toLowerCase().includes(s) && !u.userId.toLowerCase().includes(s)) return false;
+      return true;
+    });
+  }
+
+  addUser(): void {
+    if (!this.newUser.userId.trim() || !this.newUser.name.trim()) return;
+    this.addingUser = true;
+    this.api.createUser({ ...this.newUser, userId: this.newUser.userId.trim(), name: this.newUser.name.trim() }).subscribe({
+      next: () => {
+        this.snackBar.open(`User "${this.newUser.name}" added`, '✓', { duration: 3000 });
+        this.newUser = { userId: '', name: '', location: 'TVM', isAdmin: false };
+        this.addingUser = false;
+        this.loadUsers();
+      },
+      error: () => {
+        this.snackBar.open('Error adding user', 'OK', { duration: 3000 });
+        this.addingUser = false;
+      }
+    });
   }
 
   filterMatches(): void {
