@@ -17,27 +17,29 @@ import { AuthService } from '../../services/auth.service';
         <img class="nav-logo" src="fifa-logo-white.png" alt="FIFA">
         <!-- Desktop nav -->
         <nav class="nav-links desktop-nav">
-          <a routerLink="/home" routerLinkActive="active" class="nav-item">
-            <mat-icon>sports_soccer</mat-icon>
-            <span class="nav-label">Matches</span>
-          </a>
-          <a routerLink="/leaderboard" routerLinkActive="active" class="nav-item">
-            <mat-icon>emoji_events</mat-icon>
-            <span class="nav-label">Leaderboard</span>
-          </a>
           @if (auth.isAdmin) {
             <a routerLink="/admin" routerLinkActive="active" class="nav-item">
               <mat-icon>shield</mat-icon>
               <span class="nav-label">Admin</span>
             </a>
           }
+          <a routerLink="/home" routerLinkActive="active" class="nav-item">
+            <mat-icon>sports_soccer</mat-icon>
+            <span class="nav-label">Matches</span>
+          </a>
+          @if (!auth.isAdmin) {
+            <a routerLink="/my-predictions" routerLinkActive="active" class="nav-item">
+              <mat-icon>assignment</mat-icon>
+              <span class="nav-label">My Picks</span>
+            </a>
+          }
+          <a routerLink="/leaderboard" routerLinkActive="active" class="nav-item">
+            <mat-icon>emoji_events</mat-icon>
+            <span class="nav-label">Leaderboard</span>
+          </a>
         </nav>
         <span class="spacer"></span>
         <!-- Desktop user menu -->
-        <a class="nav-item desktop-nav" href="https://www.linkedin.com/in/kiran-s-g-84868a199/" target="_blank" rel="noopener">
-          <mat-icon>code</mat-icon>
-          <span class="nav-label">Developer</span>
-        </a>
         <button class="nav-item user-btn desktop-nav" [matMenuTriggerFor]="userMenu">
           <mat-icon>account_circle</mat-icon>
         </button>
@@ -74,23 +76,25 @@ import { AuthService } from '../../services/auth.service';
           <span>{{ auth.currentUser?.name }}</span>
         </div>
         <nav class="drawer-nav">
-          <a routerLink="/home" routerLinkActive="active" class="drawer-item" (click)="closeDrawer()">
-            <mat-icon>sports_soccer</mat-icon>
-            <span>Matches</span>
-          </a>
-          <a routerLink="/leaderboard" routerLinkActive="active" class="drawer-item" (click)="closeDrawer()">
-            <mat-icon>emoji_events</mat-icon>
-            <span>Leaderboard</span>
-          </a>
           @if (auth.isAdmin) {
             <a routerLink="/admin" routerLinkActive="active" class="drawer-item" (click)="closeDrawer()">
               <mat-icon>shield</mat-icon>
               <span>Admin</span>
             </a>
           }
-          <a href="https://www.linkedin.com/in/kiran-s-g-84868a199/" target="_blank" rel="noopener" class="drawer-item" (click)="closeDrawer()">
-            <mat-icon>code</mat-icon>
-            <span>Developer</span>
+          <a routerLink="/home" routerLinkActive="active" class="drawer-item" (click)="closeDrawer()">
+            <mat-icon>sports_soccer</mat-icon>
+            <span>Matches</span>
+          </a>
+          @if (!auth.isAdmin) {
+            <a routerLink="/my-predictions" routerLinkActive="active" class="drawer-item" (click)="closeDrawer()">
+              <mat-icon>assignment</mat-icon>
+              <span>My Picks</span>
+            </a>
+          }
+          <a routerLink="/leaderboard" routerLinkActive="active" class="drawer-item" (click)="closeDrawer()">
+            <mat-icon>emoji_events</mat-icon>
+            <span>Leaderboard</span>
           </a>
           <button class="drawer-item logout" (click)="logout()">
             <mat-icon>logout</mat-icon>

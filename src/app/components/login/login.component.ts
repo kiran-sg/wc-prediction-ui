@@ -52,6 +52,10 @@ import { AuthService } from '../../services/auth.service';
     h2 { margin: 8px 0 0; color: #1a237e; }
     .subtitle { color: #666; margin: 4px 0 24px; }
     .login-btn { height: 48px; font-size: 16px; }
+    @media (max-width: 400px) {
+      .login-card { padding: 24px 16px; }
+      .fifa-logo { width: 64px; }
+    }
   `]
 })
 export class LoginComponent {
@@ -59,7 +63,7 @@ export class LoginComponent {
   loading = false;
 
   constructor(private auth: AuthService, private router: Router, private snackBar: MatSnackBar) {
-    if (auth.isLoggedIn) this.router.navigate(['/home']);
+    if (auth.isLoggedIn) this.router.navigate([auth.isAdmin ? '/admin' : '/home']);
   }
 
   login(): void {
@@ -69,7 +73,7 @@ export class LoginComponent {
       next: (res) => {
         this.loading = false;
         if (res.validUser) {
-          this.router.navigate(['/home']);
+          this.router.navigate([res.user.isAdmin ? '/admin' : '/home']);
         } else {
           this.snackBar.open('Invalid User ID', 'OK', { duration: 3000 });
         }

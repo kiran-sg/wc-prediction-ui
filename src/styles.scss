@@ -19,6 +19,11 @@ html, body {
   margin: 0 auto;
   padding: 16px;
   padding-bottom: 80px;
+  overflow-x: hidden;
+}
+
+@media (max-width: 360px) {
+  .container { padding: 12px; }
 }
 
 .mat-mdc-card {

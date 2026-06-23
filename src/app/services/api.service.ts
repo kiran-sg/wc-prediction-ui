@@ -40,7 +40,11 @@ export class ApiService {
 
   // Admin
   getMatchResult(matchId: string): Observable<{ matchResult: MatchResult | null }> {
-    return this.http.get<{ matchResult: MatchResult | null }>(`${this.api}/admin/match/result`, { params: { matchId } });
+    return this.http.get<{ matchResult: MatchResult | null }>(`${this.api}/matches/result`, { params: { matchId } });
+  }
+
+  scrapeMatchResult(matchId: string): Observable<{ status: boolean; message: string; matchResult: MatchResult | null }> {
+    return this.http.get<{ status: boolean; message: string; matchResult: MatchResult | null }>(`${this.api}/admin/match/scrape`, { params: { matchId } });
   }
 
   updateMatchResult(result: MatchResult): Observable<{ status: boolean; message: string }> {

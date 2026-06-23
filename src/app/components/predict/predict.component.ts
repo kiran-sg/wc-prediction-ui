@@ -41,19 +41,21 @@ import { WcMatch, WcPlayer, Prediction } from '../../models/models';
 
         @if (!locked) {
           <form (ngSubmit)="submit()">
-            <!-- Match Result -->
+            <!-- Q1: Who progresses -->
             <mat-card class="section-card">
-              <h4>Match Result</h4>
+              <h4>Who progresses to the next round</h4>
+              <p class="hint">Predict which team advances from the match. The outcome is determined after full time, extra time, or a penalty shootout.</p>
               <mat-radio-group [(ngModel)]="prediction.matchResultPredicted" name="matchResult" required class="result-group">
-                <mat-radio-button value="TEAM_A_WIN">{{ match.teamA }} Win</mat-radio-button>
+                <mat-radio-button value="TEAM_A_WIN">{{ match.teamA }}</mat-radio-button>
                 <mat-radio-button value="DRAW">Draw</mat-radio-button>
-                <mat-radio-button value="TEAM_B_WIN">{{ match.teamB }} Win</mat-radio-button>
+                <mat-radio-button value="TEAM_B_WIN">{{ match.teamB }}</mat-radio-button>
               </mat-radio-group>
             </mat-card>
 
-            <!-- Exact Score -->
+            <!-- Q2: Exact Score -->
             <mat-card class="section-card">
-              <h4>Exact Score</h4>
+              <h4>Exact score after full time &amp; extra time</h4>
+              <p class="hint">Predict the final scoreline at the end of regulation or, where applicable, extra time. The score at the end of extra time is the score that counts — regardless of what follows. Shootout goals excluded.</p>
               <div class="score-row">
                 <mat-form-field appearance="outline" class="score-field">
                   <mat-label>{{ match.teamA }}</mat-label>
@@ -67,41 +69,14 @@ import { WcMatch, WcPlayer, Prediction } from '../../models/models';
               </div>
             </mat-card>
 
-            <!-- First Goalscorer -->
+            <!-- Q3: Winning Goalscorer -->
             <mat-card class="section-card">
-              <h4>First Goalscorer</h4>
-              <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Select Player</mat-label>
-                <mat-select [(ngModel)]="prediction.firstGoalscorerPredicted" name="firstGoalscorer" required>
-                  <mat-option value="No Goal">No Goal (0-0)</mat-option>
-                  @for (player of players; track player.id) {
-                    <mat-option [value]="player.playerName">{{ player.playerName }} ({{ player.team }})</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
-            </mat-card>
-
-            <!-- Winning Goalscorer -->
-            <mat-card class="section-card">
-              <h4>Winning Goalscorer</h4>
-              <p class="hint">Player who scores the decisive goal giving the winning team a lead they don't lose.</p>
+              <h4>Winning goalscorer</h4>
+              <p class="hint">Predict the player who scores the decisive goal — the strike that gives the winning team a lead they never relinquish. The goal must be scored in full time or extra time. Shootout goals excluded.</p>
               <mat-form-field appearance="outline" class="full-width">
                 <mat-label>Select Player</mat-label>
                 <mat-select [(ngModel)]="prediction.winningGoalscorerPredicted" name="winningGoalscorer" required>
                   <mat-option value="No Winning Goal (Draw)">No Winning Goal (Draw)</mat-option>
-                  @for (player of players; track player.id) {
-                    <mat-option [value]="player.playerName">{{ player.playerName }} ({{ player.team }})</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
-            </mat-card>
-
-            <!-- Player of the Match -->
-            <mat-card class="section-card">
-              <h4>Player of the Match</h4>
-              <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Select Player</mat-label>
-                <mat-select [(ngModel)]="prediction.playerOfMatchPredicted" name="potm" required>
                   @for (player of players; track player.id) {
                     <mat-option [value]="player.playerName">{{ player.playerName }} ({{ player.team }})</mat-option>
                   }
@@ -117,11 +92,9 @@ import { WcMatch, WcPlayer, Prediction } from '../../models/models';
           @if (prediction.predictionId) {
             <mat-card class="section-card">
               <h4>Your Prediction</h4>
-              <div class="summary-row"><span>Result:</span><strong>{{ prediction.matchResultPredicted }}</strong></div>
-              <div class="summary-row"><span>Score:</span><strong>{{ prediction.scoreTeamAPredicted }} – {{ prediction.scoreTeamBPredicted }}</strong></div>
-              <div class="summary-row"><span>First Goalscorer:</span><strong>{{ prediction.firstGoalscorerPredicted }}</strong></div>
-              <div class="summary-row"><span>Winning Goalscorer:</span><strong>{{ prediction.winningGoalscorerPredicted }}</strong></div>
-              <div class="summary-row"><span>Player of Match:</span><strong>{{ prediction.playerOfMatchPredicted }}</strong></div>
+              <div class="summary-row"><span>Who progresses:</span><strong>{{ formatResult(prediction.matchResultPredicted) }}</strong></div>
+              <div class="summary-row"><span>Exact score:</span><strong>{{ prediction.scoreTeamAPredicted }} – {{ prediction.scoreTeamBPredicted }}</strong></div>
+              <div class="summary-row"><span>Winning goalscorer:</span><strong>{{ prediction.winningGoalscorerPredicted }}</strong></div>
               @if (prediction.points != null) {
                 <div class="points-badge">{{ prediction.points }} pts</div>
               }
@@ -140,25 +113,34 @@ import { WcMatch, WcPlayer, Prediction } from '../../models/models';
     </div>
   `,
   styles: [`
-    .header-card { text-align: center; padding: 20px; background: linear-gradient(135deg, #e8eaf6, #c5cae9); }
-    .match-title { display: flex; align-items: center; justify-content: center; gap: 12px; }
-    .team-name { font-size: 18px; font-weight: 500; }
-    .vs { color: #666; font-size: 14px; }
+    .header-card { text-align: center; padding: 20px 16px; background: linear-gradient(135deg, #e8eaf6, #c5cae9); }
+    .match-title { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+    .team-name { font-size: 17px; font-weight: 600; word-break: break-word; }
+    .vs { color: #666; font-size: 13px; flex-shrink: 0; }
     .match-meta { font-size: 12px; color: #555; margin-top: 8px; }
     .locked-badge { margin-top: 8px; color: #c62828; font-weight: 500; font-size: 13px; }
     .section-card { padding: 16px; }
-    .section-card h4 { margin: 0 0 12px; color: #1a237e; }
-    .hint { font-size: 12px; color: #666; margin: -8px 0 12px; }
-    .result-group { display: flex; flex-direction: column; gap: 8px; }
+    .section-card h4 { margin: 0 0 8px; color: #1a237e; font-size: 15px; }
+    .hint { font-size: 12px; color: #666; margin: 0 0 12px; line-height: 1.5; }
+    .result-group { display: flex; flex-direction: column; gap: 10px; }
     .score-row { display: flex; align-items: center; gap: 8px; }
-    .score-field { flex: 1; }
-    .score-dash { font-size: 20px; font-weight: bold; color: #666; }
+    .score-field { flex: 1; min-width: 0; }
+    .score-dash { font-size: 20px; font-weight: bold; color: #666; flex-shrink: 0; }
     .submit-btn { height: 48px; font-size: 16px; margin-top: 8px; }
-    .summary-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+    .summary-row {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      padding: 10px 0; border-bottom: 1px solid #eee; gap: 8px;
+    }
+    .summary-row span { font-size: 13px; color: #555; flex-shrink: 0; }
+    .summary-row strong { font-size: 13px; text-align: right; word-break: break-word; }
     .summary-row:last-of-type { border-bottom: none; }
     .points-badge {
-      text-align: center; margin-top: 12px; padding: 8px;
-      background: #e8f5e9; color: #2e7d32; border-radius: 8px; font-weight: 500; font-size: 18px;
+      text-align: center; margin-top: 12px; padding: 10px;
+      background: #e8f5e9; color: #2e7d32; border-radius: 8px; font-weight: 700; font-size: 20px;
+    }
+    @media (max-width: 400px) {
+      .team-name { font-size: 14px; }
+      .section-card { padding: 12px; }
     }
   `]
 })
@@ -218,6 +200,13 @@ export class PredictComponent implements OnInit {
 
   formatDate(dateTime: string): string {
     return new Date(dateTime).toLocaleDateString('en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  }
+
+  formatResult(result: string): string {
+    if (result === 'TEAM_A_WIN') return this.match?.teamA + ' win';
+    if (result === 'TEAM_B_WIN') return this.match?.teamB + ' win';
+    if (result === 'DRAW') return 'Draw';
+    return result;
   }
 
   private emptyPrediction(): Prediction {

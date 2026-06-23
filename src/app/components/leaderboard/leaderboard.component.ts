@@ -36,14 +36,18 @@ import { LeaderboardEntry } from '../../models/models';
   styles: [`
     h3 { color: #1a237e; margin: 0 0 16px; }
     .lb-card {
-      display: flex; align-items: center; padding: 12px 16px; gap: 12px;
+      display: flex; align-items: center; padding: 12px 14px; gap: 10px;
     }
     .lb-card.me { border-left: 4px solid #1a237e; background: #e8eaf6; }
-    .rank { font-size: 20px; min-width: 36px; text-align: center; }
-    .info { flex: 1; display: flex; flex-direction: column; }
-    .name { font-weight: 500; font-size: 15px; }
+    .rank { font-size: 18px; min-width: 32px; text-align: center; flex-shrink: 0; }
+    .info { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .name { font-weight: 500; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .location { font-size: 12px; color: #666; }
-    .points { font-weight: 700; font-size: 16px; color: #1a237e; }
+    .points { font-weight: 700; font-size: 15px; color: #1a237e; flex-shrink: 0; white-space: nowrap; }
+    @media (max-width: 360px) {
+      .lb-card { padding: 10px 12px; gap: 8px; }
+      .name { font-size: 13px; }
+    }
   `]
 })
 export class LeaderboardComponent implements OnInit {

@@ -87,7 +87,7 @@ import { WcMatch } from '../../models/models';
       }
 
       @if (filteredMatches.length === 0 && !loading) {
-        <div class="no-results">No matches found</div>
+        <div class="no-results">No upcoming matches found</div>
       }
 
       @if (loading) {
@@ -120,15 +120,15 @@ import { WcMatch } from '../../models/models';
     .match-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
     .match-no { font-size: 12px; color: #666; font-weight: 500; }
     .teams { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 12px 0; }
-    .team { font-size: 16px; font-weight: 500; display: flex; align-items: center; gap: 6px; }
-    .team-flag { width: 24px; height: 16px; object-fit: cover; border-radius: 2px; }
-    .vs { color: #999; font-size: 13px; }
+    .team { font-size: 15px; font-weight: 500; display: flex; align-items: center; gap: 6px; word-break: break-word; }
+    .team-flag { width: 24px; height: 16px; object-fit: cover; border-radius: 2px; flex-shrink: 0; }
+    .vs { color: #999; font-size: 13px; flex-shrink: 0; }
     .match-info {
       display: flex; flex-direction: column; gap: 4px;
       font-size: 12px; color: #666; margin-top: 8px;
     }
     .match-info span { display: flex; align-items: center; gap: 4px; }
-    .match-info mat-icon { font-size: 14px; width: 14px; height: 14px; }
+    .match-info mat-icon { font-size: 14px; width: 14px; height: 14px; flex-shrink: 0; }
     .group-badge {
       position: absolute; top: 12px; right: 12px;
       background: #e8eaf6; color: #1a237e; padding: 2px 8px;
@@ -138,6 +138,10 @@ import { WcMatch } from '../../models/models';
     @media (max-width: 768px) {
       .filter-panel { flex-direction: column; }
       .filter-field { min-width: 100%; }
+    }
+    @media (max-width: 400px) {
+      .team { font-size: 13px; }
+      .match-card { padding: 12px; }
     }
   `]
 })
@@ -157,10 +161,11 @@ export class HomeComponent implements OnInit {
   ngOnInit(): void {
     this.api.getMatches().subscribe({
       next: (matches) => {
-        this.matches = matches;
-        this.filteredMatches = matches;
-        this.teams = [...new Set(matches.flatMap(m => [m.teamA, m.teamB]))].sort();
-        this.groups = [...new Set(matches.map(m => m.groupName).filter(Boolean))].sort();
+        // Only show upcoming (unlocked) matches on this screen
+        this.matches = matches.filter(m => m.dateTime && !this.isLocked(m));
+        this.filteredMatches = this.matches;
+        this.teams = [...new Set(this.matches.flatMap(m => [m.teamA, m.teamB]))].sort();
+        this.groups = [...new Set(this.matches.map(m => m.groupName).filter(Boolean))].sort();
         this.loading = false;
       },
       error: () => { this.loading = false; }
@@ -199,7 +204,11 @@ export class HomeComponent implements OnInit {
   }
 
   formatDate(dateTime: string): string {
-    const d = new Date(dateTime);
+    if (!dateTime) return 'TBD';
+    // normalise "+05:30" → "+0530" for cross-browser ISO 8601 parsing
+    const normalised = dateTime.replace(/([+-]\d{2}):(\d{2})$/, '$1$2');
+    const d = new Date(normalised);
+    if (isNaN(d.getTime())) return 'TBD';
     return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) + ' IST';
   }
 }
