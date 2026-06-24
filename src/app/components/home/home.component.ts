@@ -9,7 +9,6 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
 import { WcMatch } from '../../models/models';
@@ -17,7 +16,7 @@ import { WcMatch } from '../../models/models';
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatCardModule, MatButtonModule, MatIconModule, MatChipsModule, MatBadgeModule, MatFormFieldModule, MatInputModule, MatSelectModule],
+  imports: [CommonModule, FormsModule, MatCardModule, MatButtonModule, MatIconModule, MatChipsModule, MatBadgeModule, MatFormFieldModule, MatInputModule],
   template: `
     <div class="container">
       <h3 class="page-title">FIFA WC 2026 Prediction Contest</h3>
@@ -33,36 +32,10 @@ import { WcMatch } from '../../models/models';
             </button>
           }
         </mat-form-field>
-        <button mat-icon-button class="filter-toggle" [class.active]="showFilters" (click)="showFilters = !showFilters">
-          <mat-icon>tune</mat-icon>
-        </button>
       </div>
 
-      <!-- Filter panel -->
-      @if (showFilters) {
-        <div class="filter-panel">
-          <mat-form-field appearance="outline" class="filter-field">
-            <mat-label>Team</mat-label>
-            <mat-select [(ngModel)]="filterTeams" (ngModelChange)="applyFilters()" multiple>
-              @for (team of teams; track team) {
-                <mat-option [value]="team">{{ team }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-          <mat-form-field appearance="outline" class="filter-field">
-            <mat-label>Group</mat-label>
-            <mat-select [(ngModel)]="filterGroups" (ngModelChange)="applyFilters()" multiple>
-              @for (group of groups; track group) {
-                <mat-option [value]="group">Group {{ group }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-          <button mat-button class="clear-btn" (click)="clearFilters()">Clear All</button>
-        </div>
-      }
-
       @for (match of filteredMatches; track match.matchNo) {
-        <mat-card class="match-card" [class.locked]="isLocked(match)" (click)="openMatch(match)">
+        <mat-card class="match-card" [class.locked]="isLocked(match)" [class.no-click]="auth.isAdmin" (click)="openMatch(match)">
           <div class="match-header">
             <span class="match-no">Match {{ match.matchNo }}</span>
             <mat-chip-set>
@@ -97,19 +70,9 @@ import { WcMatch } from '../../models/models';
   `,
   styles: [`
     .page-title { margin: 0 0 12px; color: #1a237e; font-size: 18px; font-weight: 700; }
-    .search-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .search-bar { display: flex; margin-bottom: 8px; }
     .search-field { flex: 1; }
     .search-field .mat-mdc-form-field-subscript-wrapper { display: none; }
-    .filter-toggle { color: #1a237e; }
-    .filter-toggle.active { background: #e8eaf6; }
-    .filter-panel {
-      display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;
-      padding: 12px; background: #f5f5f5; border-radius: 12px;
-      align-items: center;
-    }
-    .filter-field { flex: 1; min-width: 140px; }
-    .filter-field .mat-mdc-form-field-subscript-wrapper { display: none; }
-    .clear-btn { color: #d32f2f; }
     .no-results { text-align: center; color: #999; padding: 32px; }
     .match-card {
       cursor: pointer; padding: 16px; transition: transform 0.15s ease, box-shadow 0.15s ease;
@@ -117,6 +80,7 @@ import { WcMatch } from '../../models/models';
     }
     .match-card:active { transform: scale(0.98); }
     .match-card.locked { opacity: 0.7; }
+    .match-card.no-click { cursor: default; pointer-events: none; }
     .match-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
     .match-no { font-size: 12px; color: #666; font-weight: 500; }
     .teams { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 12px 0; }
@@ -150,22 +114,16 @@ export class HomeComponent implements OnInit {
   filteredMatches: WcMatch[] = [];
   loading = true;
   searchText = '';
-  showFilters = false;
-  filterTeams: string[] = [];
-  filterGroups: string[] = [];
-  teams: string[] = [];
-  groups: string[] = [];
 
   constructor(private api: ApiService, public auth: AuthService, private router: Router) {}
 
   ngOnInit(): void {
     this.api.getMatches().subscribe({
       next: (matches) => {
-        // Only show upcoming (unlocked) matches on this screen
-        this.matches = matches.filter(m => m.dateTime && !this.isLocked(m));
+        this.matches = this.auth.isAdmin
+          ? matches.filter(m => m.dateTime)
+          : matches.filter(m => m.dateTime && !this.isLocked(m));
         this.filteredMatches = this.matches;
-        this.teams = [...new Set(this.matches.flatMap(m => [m.teamA, m.teamB]))].sort();
-        this.groups = [...new Set(this.matches.map(m => m.groupName).filter(Boolean))].sort();
         this.loading = false;
       },
       error: () => { this.loading = false; }
@@ -173,26 +131,21 @@ export class HomeComponent implements OnInit {
   }
 
   applyFilters(): void {
-    const search = this.searchText.toLowerCase();
+    const raw = this.searchText.toLowerCase().trim();
+    if (!raw) { this.filteredMatches = this.matches; return; }
+    // Normalize month names so "june" matches "jun", "january" matches "jan" etc.
+    const search = raw
+      .replace(/\bjanuary\b/, 'jan').replace(/\bfebruary\b/, 'feb')
+      .replace(/\bmarch\b/, 'mar').replace(/\bapril\b/, 'apr')
+      .replace(/\bmay\b/, 'may').replace(/\bjune\b/, 'jun')
+      .replace(/\bjuly\b/, 'jul').replace(/\baugust\b/, 'aug')
+      .replace(/\bseptember\b/, 'sep').replace(/\boctober\b/, 'oct')
+      .replace(/\bnovember\b/, 'nov').replace(/\bdecember\b/, 'dec');
     this.filteredMatches = this.matches.filter(m => {
-      // Search text
-      if (search) {
-        const matchStr = `${m.teamA} ${m.teamB}`.toLowerCase();
-        if (!matchStr.includes(search)) return false;
-      }
-      // Team filter
-      if (this.filterTeams.length && !this.filterTeams.includes(m.teamA) && !this.filterTeams.includes(m.teamB)) return false;
-      // Group filter
-      if (this.filterGroups.length && !this.filterGroups.includes(m.groupName)) return false;
-      return true;
+      const teams = `${m.teamA} ${m.teamB}`.toLowerCase();
+      const date = this.formatDate(m.dateTime).toLowerCase();
+      return teams.includes(search) || date.includes(search);
     });
-  }
-
-  clearFilters(): void {
-    this.searchText = '';
-    this.filterTeams = [];
-    this.filterGroups = [];
-    this.filteredMatches = this.matches;
   }
 
   isLocked(match: WcMatch): boolean {

@@ -81,7 +81,6 @@ import { WcMatch, WcPlayer, MatchResult, Prediction } from '../../models/models'
                   <h4>Match Result</h4>
                   <mat-radio-group [(ngModel)]="result.matchResult" name="matchResult" required class="result-group">
                     <mat-radio-button value="TEAM_A_WIN">{{ selectedMatch.teamA }} Win</mat-radio-button>
-                    <mat-radio-button value="DRAW">Draw</mat-radio-button>
                     <mat-radio-button value="TEAM_B_WIN">{{ selectedMatch.teamB }} Win</mat-radio-button>
                   </mat-radio-group>
                 </mat-card>

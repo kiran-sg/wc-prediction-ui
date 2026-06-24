@@ -47,7 +47,6 @@ import { WcMatch, WcPlayer, Prediction } from '../../models/models';
               <p class="hint">Predict which team advances from the match. The outcome is determined after full time, extra time, or a penalty shootout.</p>
               <mat-radio-group [(ngModel)]="prediction.matchResultPredicted" name="matchResult" required class="result-group">
                 <mat-radio-button value="TEAM_A_WIN">{{ match.teamA }}</mat-radio-button>
-                <mat-radio-button value="DRAW">Draw</mat-radio-button>
                 <mat-radio-button value="TEAM_B_WIN">{{ match.teamB }}</mat-radio-button>
               </mat-radio-group>
             </mat-card>
