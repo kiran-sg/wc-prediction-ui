@@ -17,6 +17,11 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { ApiService } from '../../services/api.service';
 import { WcMatch, WcPlayer, MatchResult, Prediction } from '../../models/models';
 
+const STAGE_FULL: Record<string, string> = {
+  R32: 'Round of 32', R16: 'Round of 16', QF: 'Quarter Final',
+  SF: 'Semi Final', LF: 'Losers Final', FINAL: 'Final'
+};
+
 @Component({
   selector: 'app-admin',
   standalone: true,
@@ -76,7 +81,7 @@ import { WcMatch, WcPlayer, MatchResult, Prediction } from '../../models/models'
         <mat-autocomplete #matchAuto="matAutocomplete" (optionSelected)="onMatchSelected($event.option.value)">
           @for (match of filteredMatches; track match.matchNo) {
             <mat-option [value]="match.matchNo">
-              Match {{ match.matchNo }}: {{ match.teamA }} vs {{ match.teamB }}
+              {{ matchLabel(match) }}: {{ match.teamA }} vs {{ match.teamB }}
             </mat-option>
           }
         </mat-autocomplete>
@@ -517,6 +522,7 @@ import { WcMatch, WcPlayer, MatchResult, Prediction } from '../../models/models'
 export class AdminComponent implements OnInit {
   matches: WcMatch[] = [];
   filteredMatches: WcMatch[] = [];
+  private matchLabels = new Map<string, string>();
   matchSearch = '';
   players: WcPlayer[] = [];
   selectedMatch: WcMatch | null = null;
@@ -554,7 +560,7 @@ export class AdminComponent implements OnInit {
   constructor(private api: ApiService, private snackBar: MatSnackBar) {}
 
   ngOnInit(): void {
-    this.api.getMatches().subscribe(m => { this.matches = m; this.filteredMatches = m; });
+    this.api.getMatches().subscribe(m => { this.buildMatchLabels(m); this.matches = m; this.filteredMatches = m; });
     this.loadUsers();
   }
 
@@ -601,17 +607,43 @@ export class AdminComponent implements OnInit {
     });
   }
 
+  private buildMatchLabels(matches: WcMatch[]): void {
+    const counters: Record<string, number> = {};
+    const stageOrder = ['R32', 'R16', 'QF', 'SF', 'LF', 'FINAL'];
+    const sorted = [...matches].sort((a, b) => {
+      const si = stageOrder.indexOf(a.stage ?? '') - stageOrder.indexOf(b.stage ?? '');
+      return si !== 0 ? si : (Number(a.matchNo) - Number(b.matchNo));
+    });
+    sorted.forEach(m => {
+      const s = m.stage ?? 'FINAL';
+      counters[s] = (counters[s] ?? 0) + 1;
+      if (s === 'LF' || s === 'FINAL') {
+        this.matchLabels.set(m.matchNo, STAGE_FULL[s] ?? s);
+      } else {
+        this.matchLabels.set(m.matchNo, `${s} ${counters[s]}`);
+      }
+    });
+  }
+
+  matchLabel(match: WcMatch): string {
+    return this.matchLabels.get(match.matchNo) ?? `Match ${match.matchNo}`;
+  }
+
+  stageLabel(stage: string | undefined): string {
+    return STAGE_FULL[stage ?? ''] ?? stage ?? '';
+  }
+
   filterMatches(): void {
     const s = this.matchSearch.toLowerCase();
     this.filteredMatches = s
-      ? this.matches.filter(m => `${m.matchNo} ${m.teamA} ${m.teamB}`.toLowerCase().includes(s))
+      ? this.matches.filter(m => `${this.matchLabel(m)} ${m.teamA} ${m.teamB}`.toLowerCase().includes(s))
       : this.matches;
   }
 
   onMatchSelected(matchNo: string): void {
     this.selectedMatch = this.matches.find(m => m.matchNo === matchNo) ?? null;
     if (this.selectedMatch) {
-      this.matchSearch = `Match ${this.selectedMatch.matchNo}: ${this.selectedMatch.teamA} vs ${this.selectedMatch.teamB}`;
+      this.matchSearch = `${this.matchLabel(this.selectedMatch)}: ${this.selectedMatch.teamA} vs ${this.selectedMatch.teamB}`;
       this.filteredMatches = this.matches;
       this.fetchMessage = '';
       this.result = this.emptyResult();
@@ -639,7 +671,7 @@ export class AdminComponent implements OnInit {
   onMatchBlur(): void {
     // If the user clears the input or types something invalid, reset selection
     if (this.selectedMatch) {
-      const expected = `Match ${this.selectedMatch.matchNo}: ${this.selectedMatch.teamA} vs ${this.selectedMatch.teamB}`;
+      const expected = `${this.matchLabel(this.selectedMatch)}: ${this.selectedMatch.teamA} vs ${this.selectedMatch.teamB}`;
       if (this.matchSearch !== expected) {
         this.selectedMatch = null;
         this.matchSearch = '';
@@ -747,7 +779,7 @@ export class AdminComponent implements OnInit {
         this.syncSuccess = true;
         const detail = r.inserted != null ? ` (${r.inserted} inserted)` : r.total != null ? ` (${r.total})` : '';
         this.syncMessage = successMsg + detail;
-        this.api.getMatches().subscribe(m => { this.matches = m; this.filteredMatches = m; });
+        this.api.getMatches().subscribe(m => { this.buildMatchLabels(m); this.matches = m; this.filteredMatches = m; });
       },
       error: () => this.onSyncError()
     });

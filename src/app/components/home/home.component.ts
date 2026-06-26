@@ -13,6 +13,11 @@ import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
 import { WcMatch, Prediction } from '../../models/models';
 
+const STAGE_FULL: Record<string, string> = {
+  R32: 'Round of 32', R16: 'Round of 16', QF: 'Quarter Final',
+  SF: 'Semi Final', LF: 'Losers Final', FINAL: 'Final'
+};
+
 @Component({
   selector: 'app-home',
   standalone: true,
@@ -41,7 +46,7 @@ import { WcMatch, Prediction } from '../../models/models';
           [class.no-click]="auth.isAdmin || !teamsKnown(match)"
           (click)="openMatch(match)">
           <div class="match-header">
-            <span class="match-no">Match {{ match.matchNo }}</span>
+            <span class="match-no">{{ matchLabel(match) }}</span>
             <div class="header-chips">
               @if (!teamsKnown(match)) {
                 <span class="tbd-badge">Teams TBD</span>
@@ -64,9 +69,7 @@ import { WcMatch, Prediction } from '../../models/models';
             <span><mat-icon inline>schedule</mat-icon> {{ formatDate(match.dateTime) }}</span>
             <span><mat-icon inline>stadium</mat-icon> {{ match.venue }}</span>
           </div>
-          @if (match.groupName) {
-            <div class="group-badge">{{ match.groupName }}</div>
-          }
+          <div class="group-badge">{{ stageLabel(match.stage) }}</div>
         </mat-card>
       }
 
@@ -139,12 +142,14 @@ export class HomeComponent implements OnInit {
   loading = true;
   searchText = '';
   predictedMatchIds = new Set<string>();
+  private matchLabels = new Map<string, string>();
 
   constructor(private api: ApiService, public auth: AuthService, private router: Router) {}
 
   ngOnInit(): void {
     this.api.getMatches().subscribe({
       next: (matches) => {
+        this.buildMatchLabels(matches);
         this.matches = this.auth.isAdmin
           ? matches.filter(m => m.dateTime)
           : matches.filter(m => m.dateTime && !this.isLocked(m));
@@ -161,6 +166,32 @@ export class HomeComponent implements OnInit {
         }
       });
     }
+  }
+
+  private buildMatchLabels(matches: WcMatch[]): void {
+    const counters: Record<string, number> = {};
+    const stageOrder = ['R32', 'R16', 'QF', 'SF', 'LF', 'FINAL'];
+    const sorted = [...matches].sort((a, b) => {
+      const si = stageOrder.indexOf(a.stage ?? '') - stageOrder.indexOf(b.stage ?? '');
+      return si !== 0 ? si : (Number(a.matchNo) - Number(b.matchNo));
+    });
+    sorted.forEach(m => {
+      const s = m.stage ?? 'FINAL';
+      counters[s] = (counters[s] ?? 0) + 1;
+      if (s === 'LF' || s === 'FINAL') {
+        this.matchLabels.set(m.matchNo, STAGE_FULL[s] ?? s);
+      } else {
+        this.matchLabels.set(m.matchNo, `${s} ${counters[s]}`);
+      }
+    });
+  }
+
+  matchLabel(match: WcMatch): string {
+    return this.matchLabels.get(match.matchNo) ?? `Match ${match.matchNo}`;
+  }
+
+  stageLabel(stage: string | undefined): string {
+    return STAGE_FULL[stage ?? ''] ?? stage ?? '';
   }
 
   hasPrediction(match: WcMatch): boolean {
