@@ -271,26 +271,6 @@ const STAGE_FULL: Record<string, string> = {
           </ng-template>
           <div class="tab-content">
 
-            <!-- Bulk upload card -->
-            <mat-card class="section-card add-user-card">
-              <h4><mat-icon>upload_file</mat-icon> Bulk Upload Users (Excel)</h4>
-              <div class="upload-row">
-                <input #excelInput type="file" accept=".xlsx" style="display:none"
-                       (change)="onExcelSelected($event)">
-                <button mat-stroked-button color="primary" (click)="excelInput.click()" [disabled]="uploading">
-                  <mat-icon>attach_file</mat-icon> {{ uploadFileName || 'Choose .xlsx file' }}
-                </button>
-                <button mat-raised-button color="primary" (click)="uploadUsers()"
-                        [disabled]="!uploadFile || uploading">
-                  {{ uploading ? 'Uploading...' : 'Upload' }}
-                </button>
-                @if (uploadMessage) {
-                  <span [class]="uploadSuccess ? 'upload-ok' : 'upload-err'">{{ uploadMessage }}</span>
-                }
-              </div>
-              <p class="upload-hint">Columns required: <strong>Name</strong>, <strong>Location</strong>, <strong>Hash ID</strong></p>
-            </mat-card>
-
             <!-- Add user form -->
             <mat-card class="section-card add-user-card">
               <h4><mat-icon>person_add</mat-icon> Add New User</h4>
