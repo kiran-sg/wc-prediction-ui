@@ -271,6 +271,26 @@ const STAGE_FULL: Record<string, string> = {
           </ng-template>
           <div class="tab-content">
 
+            <!-- Bulk upload card -->
+            <mat-card class="section-card add-user-card">
+              <h4><mat-icon>upload_file</mat-icon> Bulk Upload Users (Excel)</h4>
+              <div class="upload-row">
+                <input #excelInput type="file" accept=".xlsx" style="display:none"
+                       (change)="onExcelSelected($event)">
+                <button mat-stroked-button color="primary" (click)="excelInput.click()" [disabled]="uploading">
+                  <mat-icon>attach_file</mat-icon> {{ uploadFileName || 'Choose .xlsx file' }}
+                </button>
+                <button mat-raised-button color="primary" (click)="uploadUsers()"
+                        [disabled]="!uploadFile || uploading">
+                  {{ uploading ? 'Uploading...' : 'Upload' }}
+                </button>
+                @if (uploadMessage) {
+                  <span [class]="uploadSuccess ? 'upload-ok' : 'upload-err'">{{ uploadMessage }}</span>
+                }
+              </div>
+              <p class="upload-hint">Columns required: <strong>Name</strong>, <strong>Location</strong>, <strong>Hash ID</strong></p>
+            </mat-card>
+
             <!-- Add user form -->
             <mat-card class="section-card add-user-card">
               <h4><mat-icon>person_add</mat-icon> Add New User</h4>
@@ -383,6 +403,11 @@ const STAGE_FULL: Record<string, string> = {
       .add-row-2 { gap: 8px; }
       .add-btn { width: 100%; }
     }
+
+    .upload-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .upload-hint { margin: 8px 0 0; font-size: 12px; color: #888; }
+    .upload-ok { font-size: 13px; color: #2e7d32; font-weight: 500; }
+    .upload-err { font-size: 13px; color: #c62828; font-weight: 500; }
 
     /* User list */
     .users-summary { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
@@ -549,6 +574,12 @@ export class AdminComponent implements OnInit {
   addingUser = false;
   newUser = { userId: '', name: '', location: 'TVM', isAdmin: false };
 
+  uploadFile: File | null = null;
+  uploadFileName = '';
+  uploading = false;
+  uploadMessage = '';
+  uploadSuccess = false;
+
   get tvmCount(): number { return this.allUsers.filter(u => u.location === 'TVM').length; }
   get puneCount(): number { return this.allUsers.filter(u => u.location === 'Pune').length; }
 
@@ -587,6 +618,35 @@ export class AdminComponent implements OnInit {
       if (this.locationFilter && u.location !== this.locationFilter) return false;
       if (s && !u.name.toLowerCase().includes(s) && !u.userId.toLowerCase().includes(s)) return false;
       return true;
+    });
+  }
+
+  onExcelSelected(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    this.uploadFile = file;
+    this.uploadFileName = file.name;
+    this.uploadMessage = '';
+  }
+
+  uploadUsers(): void {
+    if (!this.uploadFile) return;
+    this.uploading = true;
+    this.uploadMessage = '';
+    this.api.uploadUsers(this.uploadFile).subscribe({
+      next: (res) => {
+        this.uploading = false;
+        this.uploadSuccess = true;
+        this.uploadMessage = `✓ ${res.created} added, ${res.skipped} skipped`;
+        this.uploadFile = null;
+        this.uploadFileName = '';
+        this.loadUsers();
+      },
+      error: (err) => {
+        this.uploading = false;
+        this.uploadSuccess = false;
+        this.uploadMessage = err.error?.message || 'Upload failed';
+      }
     });
   }
 

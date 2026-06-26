@@ -80,4 +80,10 @@ export class ApiService {
   createUser(user: { userId: string; name: string; location: string; isAdmin: boolean }): Observable<WcUser> {
     return this.http.post<WcUser>(`${this.api}/users`, user);
   }
+
+  uploadUsers(file: File): Observable<any> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<any>(`${this.api}/admin/users/upload`, form);
+  }
 }
