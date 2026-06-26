@@ -9,6 +9,7 @@ html, body {
   scroll-behavior: smooth;
 }
 
+
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
@@ -56,4 +57,14 @@ html, body {
 // Snackbar positioning for mobile
 .mat-mdc-snack-bar-container {
   margin-bottom: 70px !important;
+}
+
+// Inactivity warning snackbar
+.inactivity-snack .mdc-snackbar__surface {
+  background: #e65100 !important;
+  color: #fff !important;
+}
+.inactivity-snack .mat-mdc-snack-bar-action {
+  color: #fff !important;
+  font-weight: 700;
 }

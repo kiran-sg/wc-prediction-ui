@@ -11,7 +11,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
-import { WcMatch } from '../../models/models';
+import { WcMatch, Prediction } from '../../models/models';
 
 @Component({
   selector: 'app-home',
@@ -35,14 +35,25 @@ import { WcMatch } from '../../models/models';
       </div>
 
       @for (match of filteredMatches; track match.matchNo) {
-        <mat-card class="match-card" [class.locked]="isLocked(match)" [class.no-click]="auth.isAdmin" (click)="openMatch(match)">
+        <mat-card class="match-card"
+          [class.locked]="isLocked(match)"
+          [class.tbd]="!teamsKnown(match)"
+          [class.no-click]="auth.isAdmin || !teamsKnown(match)"
+          (click)="openMatch(match)">
           <div class="match-header">
             <span class="match-no">Match {{ match.matchNo }}</span>
-            <mat-chip-set>
-              <mat-chip [class.live]="isLocked(match)">
-                {{ isLocked(match) ? '🔒 Locked' : '🟢 Open' }}
-              </mat-chip>
-            </mat-chip-set>
+            <div class="header-chips">
+              @if (!teamsKnown(match)) {
+                <span class="tbd-badge">Teams TBD</span>
+              } @else if (!auth.isAdmin && !isLocked(match) && !hasPrediction(match)) {
+                <span class="pending-badge">Prediction Pending</span>
+              }
+              <mat-chip-set>
+                <mat-chip [class.live]="isLocked(match)" [class.tbd-chip]="!teamsKnown(match)">
+                  {{ !teamsKnown(match) ? '⏳ Awaiting Teams' : isLocked(match) ? '🔒 Locked' : '🟢 Open' }}
+                </mat-chip>
+              </mat-chip-set>
+            </div>
           </div>
           <div class="teams">
             <span class="team"><img class="team-flag" [src]="match.teamALogo" [alt]="match.teamA"> {{ match.teamA }}</span>
@@ -54,7 +65,7 @@ import { WcMatch } from '../../models/models';
             <span><mat-icon inline>stadium</mat-icon> {{ match.venue }}</span>
           </div>
           @if (match.groupName) {
-            <div class="group-badge">Group {{ match.groupName }}</div>
+            <div class="group-badge">{{ match.groupName }}</div>
           }
         </mat-card>
       }
@@ -83,6 +94,18 @@ import { WcMatch } from '../../models/models';
     .match-card.no-click { cursor: default; pointer-events: none; }
     .match-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
     .match-no { font-size: 12px; color: #666; font-weight: 500; }
+    .header-chips { display: flex; align-items: center; gap: 6px; }
+    .pending-badge {
+      font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 10px;
+      background: #fff3e0; color: #e65100; border: 1px solid #ffcc80;
+      white-space: nowrap;
+    }
+    .tbd-badge {
+      font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 10px;
+      background: #f5f5f5; color: #9e9e9e; border: 1px solid #e0e0e0;
+      white-space: nowrap;
+    }
+    .match-card.tbd { opacity: 0.55; cursor: default; }
     .teams { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 12px 0; }
     .team { font-size: 15px; font-weight: 500; display: flex; align-items: center; gap: 6px; word-break: break-word; }
     .team-flag { width: 24px; height: 16px; object-fit: cover; border-radius: 2px; flex-shrink: 0; }
@@ -99,6 +122,7 @@ import { WcMatch } from '../../models/models';
       border-radius: 12px; font-size: 11px; font-weight: 500;
     }
     mat-chip.live { background: #ffcdd2 !important; }
+    mat-chip.tbd-chip { background: #f5f5f5 !important; color: #9e9e9e !important; }
     @media (max-width: 768px) {
       .filter-panel { flex-direction: column; }
       .filter-field { min-width: 100%; }
@@ -114,6 +138,7 @@ export class HomeComponent implements OnInit {
   filteredMatches: WcMatch[] = [];
   loading = true;
   searchText = '';
+  predictedMatchIds = new Set<string>();
 
   constructor(private api: ApiService, public auth: AuthService, private router: Router) {}
 
@@ -128,6 +153,22 @@ export class HomeComponent implements OnInit {
       },
       error: () => { this.loading = false; }
     });
+
+    if (!this.auth.isAdmin) {
+      this.api.getMyPredictions(this.auth.currentUser!.userId).subscribe({
+        next: (res) => {
+          this.predictedMatchIds = new Set(res.predictions.map(p => p.matchId));
+        }
+      });
+    }
+  }
+
+  hasPrediction(match: WcMatch): boolean {
+    return this.predictedMatchIds.has(match.matchNo);
+  }
+
+  teamsKnown(match: WcMatch): boolean {
+    return !!(match.teamALogo && match.teamBLogo);
   }
 
   applyFilters(): void {
@@ -153,6 +194,7 @@ export class HomeComponent implements OnInit {
   }
 
   openMatch(match: WcMatch): void {
+    if (this.auth.isAdmin || !this.teamsKnown(match)) return;
     this.router.navigate(['/predict', match.matchNo]);
   }
 

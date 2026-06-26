@@ -36,6 +36,33 @@ import { WcMatch, WcPlayer, MatchResult, Prediction } from '../../models/models'
         <mat-tab label="Match Results">
           <div class="tab-content">
 
+      <!-- Data Sync Card -->
+      <mat-card class="sync-card">
+        <div class="sync-header">
+          <mat-icon>sync</mat-icon>
+          <span>Data Sync</span>
+        </div>
+        <div class="sync-buttons">
+          <button mat-stroked-button (click)="syncTeams()" [disabled]="syncing">
+            <mat-icon>groups</mat-icon> Sync Teams
+          </button>
+          <button mat-stroked-button (click)="syncKnockoutMatches()" [disabled]="syncing">
+            <mat-icon>emoji_events</mat-icon> Sync Matches
+          </button>
+          <button mat-stroked-button (click)="syncPlayers()" [disabled]="syncing">
+            <mat-icon>sports_soccer</mat-icon> Sync Players
+          </button>
+          <button mat-raised-button color="primary" (click)="syncAll()" [disabled]="syncing">
+            @if (syncing) { <mat-spinner diameter="16" class="btn-spinner"></mat-spinner> }
+            @else { <mat-icon>cloud_sync</mat-icon> }
+            {{ syncing ? 'Syncing...' : 'Sync All' }}
+          </button>
+        </div>
+        @if (syncMessage) {
+          <div class="sync-msg" [class.error]="!syncSuccess">{{ syncMessage }}</div>
+        }
+      </mat-card>
+
       <!-- Match selector -->
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>Select Match</mat-label>
@@ -324,6 +351,15 @@ import { WcMatch, WcPlayer, MatchResult, Prediction } from '../../models/models'
     .top-tabs { margin-top: 0; }
     .tab-content { padding: 16px 0; }
 
+    /* Sync card */
+    .sync-card { padding: 14px 16px; margin-bottom: 16px; border-radius: 12px !important; }
+    .sync-header { display: flex; align-items: center; gap: 8px; font-weight: 600; color: #1a237e; font-size: 14px; margin-bottom: 12px; }
+    .sync-header mat-icon { font-size: 18px; width: 18px; height: 18px; }
+    .sync-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .sync-buttons button { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; width: 100%; }
+    .sync-msg { margin-top: 10px; font-size: 13px; color: #2e7d32; padding: 6px 10px; background: #e8f5e9; border-radius: 8px; }
+    .sync-msg.error { color: #c62828; background: #fce4ec; }
+
     /* Add user form */
     .add-user-card { padding: 16px; margin-bottom: 16px; }
     .add-user-card h4 { margin: 0 0 12px; color: #1a237e; display: flex; align-items: center; gap: 8px; }
@@ -489,6 +525,10 @@ export class AdminComponent implements OnInit {
   fetching = false;
   fetchMessage = '';
   fetchSuccess = false;
+
+  syncing = false;
+  syncMessage = '';
+  syncSuccess = false;
 
   predictions: Prediction[] = [];
   filteredPredictions: Prediction[] = [];
@@ -680,6 +720,43 @@ export class AdminComponent implements OnInit {
   isQ3Correct(p: Prediction): boolean {
     return !!this.result.matchResult && !!p.winningGoalscorerPredicted &&
       p.winningGoalscorerPredicted === this.result.winningGoalscorer;
+  }
+
+  syncTeams(): void {
+    this.runSync(this.api.syncTeams(), 'Teams synced');
+  }
+
+  syncKnockoutMatches(): void {
+    this.runSync(this.api.syncKnockoutMatches(), 'Knockout matches synced');
+  }
+
+  syncPlayers(): void {
+    this.runSync(this.api.syncPlayers(), 'Players synced');
+  }
+
+  syncAll(): void {
+    this.runSync(this.api.syncAll(), 'All data synced');
+  }
+
+  private runSync(obs: any, successMsg: string): void {
+    this.syncing = true;
+    this.syncMessage = '';
+    obs.subscribe({
+      next: (r: any) => {
+        this.syncing = false;
+        this.syncSuccess = true;
+        const detail = r.inserted != null ? ` (${r.inserted} inserted)` : r.total != null ? ` (${r.total})` : '';
+        this.syncMessage = successMsg + detail;
+        this.api.getMatches().subscribe(m => { this.matches = m; this.filteredMatches = m; });
+      },
+      error: () => this.onSyncError()
+    });
+  }
+
+  private onSyncError(): void {
+    this.syncing = false;
+    this.syncSuccess = false;
+    this.syncMessage = 'Sync failed — make sure the backend is running.';
   }
 
   private emptyResult(): MatchResult {

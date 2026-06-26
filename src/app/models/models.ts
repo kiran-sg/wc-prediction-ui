@@ -15,6 +15,7 @@ export interface WcMatch {
   teamBLogo: string;
   groupName: string;
   venue: string;
+  stage: string;
 }
 
 export interface WcPlayer {

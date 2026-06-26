@@ -17,6 +17,7 @@ import { AuthService } from '../../services/auth.service';
     <div class="login-container">
       <mat-card class="login-card">
         <div class="text-center mb-16">
+          <img src="rhythm.png" alt="Rhythm" class="rhythm-logo">
           <span class="login-icon"><img src="fifa-logo-white.png" alt="FIFA" class="fifa-logo"></span>
           <h2>WORLD CUP 2026</h2>
           <p class="subtitle">Prediction Contest</p>
@@ -52,9 +53,11 @@ import { AuthService } from '../../services/auth.service';
     h2 { margin: 8px 0 0; color: #1a237e; }
     .subtitle { color: #666; margin: 4px 0 24px; }
     .login-btn { height: 48px; font-size: 16px; }
+    .rhythm-logo { width: 100%; max-width: 280px; height: auto; object-fit: contain; margin-bottom: 12px; display: block; margin-left: auto; margin-right: auto; mix-blend-mode: multiply; }
     @media (max-width: 400px) {
       .login-card { padding: 24px 16px; }
       .fifa-logo { width: 64px; }
+      .rhythm-logo { max-width: 200px; }
     }
   `]
 })

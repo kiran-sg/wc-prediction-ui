@@ -38,6 +38,23 @@ export class ApiService {
     return this.http.get<LeaderboardEntry[]>(`${this.api}/predictions/leaderboard`, { params: { location } });
   }
 
+  // Sync
+  syncTeams(): Observable<any> {
+    return this.http.get<any>(`${this.api}/matches/sync-teams`);
+  }
+
+  syncKnockoutMatches(): Observable<any> {
+    return this.http.get<any>(`${this.api}/matches/sync-knockout`);
+  }
+
+  syncPlayers(): Observable<any> {
+    return this.http.get<any>(`${this.api}/matches/sync-players`);
+  }
+
+  syncAll(): Observable<any> {
+    return this.http.get<any>(`${this.api}/matches/sync-all`);
+  }
+
   // Admin
   getMatchResult(matchId: string): Observable<{ matchResult: MatchResult | null }> {
     return this.http.get<{ matchResult: MatchResult | null }>(`${this.api}/matches/result`, { params: { matchId } });

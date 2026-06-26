@@ -185,8 +185,8 @@ export class PredictComponent implements OnInit {
     this.api.savePrediction(this.prediction).subscribe({
       next: (res) => {
         this.saving = false;
-        this.existing = true;
-        this.snackBar.open(res.message, '✓', { duration: 2500 });
+        this.snackBar.open(res.message, '✓', { duration: 2000 });
+        this.router.navigate(['/home']);
       },
       error: (err) => {
         this.saving = false;

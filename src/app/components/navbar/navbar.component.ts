@@ -39,6 +39,7 @@ import { AuthService } from '../../services/auth.service';
           </a>
         </nav>
         <span class="spacer"></span>
+        <img class="rhythm-logo" src="rhythm.jpeg" alt="Rhythm">
         <!-- Desktop user menu -->
         <button class="nav-item user-btn desktop-nav" [matMenuTriggerFor]="userMenu">
           <mat-icon>account_circle</mat-icon>
@@ -112,13 +113,23 @@ import { AuthService } from '../../services/auth.service';
       background: linear-gradient(135deg, #0d1b4a 0%, #1b3a8a 50%, #3f51b5 100%);
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
       padding: 0 12px;
-      height: 56px;
+      height: 72px;
       overflow: visible;
       display: flex;
       align-items: center;
     }
     .spacer { flex: 1; }
-    .nav-logo { height: 20px; margin-right: 12px; }
+    .nav-logo { height: 24px; margin-right: 12px; }
+    .rhythm-logo { height: 60px; width: auto; object-fit: contain; margin-right: 8px; }
+    @media (max-width: 768px) {
+      .navbar { height: 60px; }
+      .rhythm-logo { height: 48px; }
+      .nav-logo { height: 20px; }
+    }
+    @media (max-width: 400px) {
+      .navbar { height: 56px; }
+      .rhythm-logo { height: 42px; }
+    }
     .nav-links { display: flex; align-items: center; gap: 4px; }
     .nav-item {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
