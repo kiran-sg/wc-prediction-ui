@@ -23,7 +23,7 @@ import { AuthService } from '../../services/auth.service';
           <p class="subtitle">Prediction Contest</p>
         </div>
         <mat-form-field appearance="outline" class="full-width">
-          <mat-label>User ID</mat-label>
+          <mat-label>User ID / Hash ID</mat-label>
           <input matInput [(ngModel)]="userId" (keyup.enter)="login()"
                  autocomplete="username" maxlength="30">
         </mat-form-field>
