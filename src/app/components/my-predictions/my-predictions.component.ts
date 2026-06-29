@@ -65,7 +65,7 @@ interface PredictionRow {
             <!-- Match header -->
             <div class="card-header">
               <span class="match-label">{{ row.prediction.match }}</span>
-              <span class="match-date">{{ row.prediction.matchDate }}</span>
+              <span class="match-date"><mat-icon inline>schedule</mat-icon> {{ formatDate(row.prediction.matchDateTime) }}</span>
               @if (row.prediction.points != null && row.prediction.points >= 0 && row.result) {
                 <span class="pts-badge" [class.zero]="row.prediction.points === 0">
                   {{ row.prediction.points }} pts
@@ -237,7 +237,7 @@ export class MyPredictionsComponent implements OnInit {
           next: (results) => {
             this.rows = predictions
               .map((p, i) => ({ prediction: p, result: results[i].matchResult }))
-              .sort((a, b) => Number(a.prediction.matchId) - Number(b.prediction.matchId));
+              .sort((a, b) => new Date(a.prediction.matchDateTime || '').getTime() - new Date(b.prediction.matchDateTime || '').getTime());
             this.filteredRows = this.rows;
             this.totalPoints = predictions.reduce((sum, p) => sum + (p.points ?? 0), 0);
             this.scoredCount = predictions.filter(p => p.points != null && p.points >= 0 && this.rows.find(r => r.prediction === p)?.result != null).length;
@@ -246,7 +246,7 @@ export class MyPredictionsComponent implements OnInit {
           error: () => {
             this.rows = predictions
               .map(p => ({ prediction: p, result: null }))
-              .sort((a, b) => Number(a.prediction.matchId) - Number(b.prediction.matchId));
+              .sort((a, b) => new Date(a.prediction.matchDateTime || '').getTime() - new Date(b.prediction.matchDateTime || '').getTime());
             this.filteredRows = this.rows;
             this.loading = false;
           }
@@ -254,6 +254,13 @@ export class MyPredictionsComponent implements OnInit {
       },
       error: () => { this.loading = false; }
     });
+  }
+
+  formatDate(dateTime: string | undefined): string {
+    if (!dateTime) return 'TBD';
+    const normalised = dateTime.replace(/([+-]\d{2}):(\d{2})$/, '$1$2');
+    const d = new Date(normalised);
+    return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) + ' IST';
   }
 
   filterRows(): void {
