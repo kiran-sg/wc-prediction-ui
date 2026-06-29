@@ -71,7 +71,7 @@ import { WcMatch, WcPlayer, Prediction } from '../../models/models';
             <!-- Q3: Winning Goalscorer -->
             <mat-card class="section-card">
               <h4>Winning goalscorer</h4>
-              <p class="hint">Predict the player who scores the goal that gives the winning team a lead they never relinquish, or the latest goal scored for the winning team in full time or extra time. Shootout goals are excluded.</p>
+              <p class="hint">Predict the player who scores the goal that gives the winning team a lead they never relinquish. Shootout goals are excluded.</p>
               <mat-form-field appearance="outline" class="full-width">
                 <mat-label>Select Player</mat-label>
                 <mat-select [(ngModel)]="prediction.winningGoalscorerPredicted" name="winningGoalscorer" required>
