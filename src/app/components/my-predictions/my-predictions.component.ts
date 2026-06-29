@@ -235,17 +235,18 @@ export class MyPredictionsComponent implements OnInit {
 
         forkJoin(resultCalls).subscribe({
           next: (results) => {
-            this.rows = predictions.map((p, i) => ({
-              prediction: p,
-              result: results[i].matchResult
-            }));
+            this.rows = predictions
+              .map((p, i) => ({ prediction: p, result: results[i].matchResult }))
+              .sort((a, b) => Number(a.prediction.matchId) - Number(b.prediction.matchId));
             this.filteredRows = this.rows;
             this.totalPoints = predictions.reduce((sum, p) => sum + (p.points ?? 0), 0);
             this.scoredCount = predictions.filter(p => p.points != null && p.points >= 0 && this.rows.find(r => r.prediction === p)?.result != null).length;
             this.loading = false;
           },
           error: () => {
-            this.rows = predictions.map(p => ({ prediction: p, result: null }));
+            this.rows = predictions
+              .map(p => ({ prediction: p, result: null }))
+              .sort((a, b) => Number(a.prediction.matchId) - Number(b.prediction.matchId));
             this.filteredRows = this.rows;
             this.loading = false;
           }
