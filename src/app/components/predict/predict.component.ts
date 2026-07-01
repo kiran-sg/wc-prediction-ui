@@ -73,13 +73,22 @@ import { WcMatch, WcPlayer, Prediction } from '../../models/models';
               <h4>Winning goalscorer</h4>
               <p class="hint">Predict the player who scores the goal that gives the winning team a lead they never relinquish. Shootout goals are excluded.<br><br><em>Example: If the score is 2–2 and a player scores to make it 3–2, and the match ends 4–2 — the 3rd goal scorer of the winning team is the Winning Goalscorer. If the match ends 4–3, then the 4th goal scorer of the winning team is the Winning Goalscorer.</em></p>
               <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Select Player</mat-label>
-                <mat-select [(ngModel)]="prediction.winningGoalscorerPredicted" name="winningGoalscorer" required>
+                <mat-label>Search player</mat-label>
+                <mat-icon matPrefix>search</mat-icon>
+                <input matInput
+                       [(ngModel)]="goalscorerSearch"
+                       name="goalscorerSearch"
+                       (ngModelChange)="filterPlayers()"
+                       (blur)="onGoalscorerBlur()"
+                       [matAutocomplete]="goalscorerAuto"
+                       placeholder="Type name or team...">
+                <mat-autocomplete #goalscorerAuto="matAutocomplete"
+                                  (optionSelected)="onGoalscorerSelected($event.option.value)">
                   <mat-option value="No Winning Goal (Draw)">No Winning Goal (Draw)</mat-option>
-                  @for (player of players; track player.id) {
+                  @for (player of filteredPlayers; track player.id) {
                     <mat-option [value]="player.playerName">{{ player.playerName }} ({{ player.team }})</mat-option>
                   }
-                </mat-select>
+                </mat-autocomplete>
               </mat-form-field>
             </mat-card>
 
@@ -146,6 +155,8 @@ import { WcMatch, WcPlayer, Prediction } from '../../models/models';
 export class PredictComponent implements OnInit {
   match: WcMatch | null = null;
   players: WcPlayer[] = [];
+  filteredPlayers: WcPlayer[] = [];
+  goalscorerSearch = '';
   prediction: Prediction = this.emptyPrediction();
   locked = false;
   existing = false;
@@ -168,7 +179,10 @@ export class PredictComponent implements OnInit {
       this.match = matches.find(m => m.matchNo === matchId) ?? null;
       if (this.match) {
         this.locked = new Date() >= new Date(this.match.dateTime);
-        this.api.getPlayersByTeams([this.match.teamA, this.match.teamB]).subscribe(p => this.players = p);
+        this.api.getPlayersByTeams([this.match.teamA, this.match.teamB]).subscribe(p => {
+          this.players = p;
+          this.filteredPlayers = p;
+        });
       }
     });
 
@@ -176,6 +190,7 @@ export class PredictComponent implements OnInit {
       if (res.prediction) {
         this.prediction = res.prediction;
         this.existing = true;
+        this.goalscorerSearch = res.prediction.winningGoalscorerPredicted || '';
       }
     });
   }
@@ -193,6 +208,27 @@ export class PredictComponent implements OnInit {
         this.snackBar.open(err.error?.message || 'Error saving prediction', 'OK', { duration: 3000 });
       }
     });
+  }
+
+  filterPlayers(): void {
+    const s = this.goalscorerSearch.toLowerCase().trim();
+    this.filteredPlayers = s
+      ? this.players.filter(p => p.playerName.toLowerCase().includes(s) || p.team.toLowerCase().includes(s))
+      : this.players;
+  }
+
+  onGoalscorerSelected(value: string): void {
+    this.prediction.winningGoalscorerPredicted = value;
+    this.goalscorerSearch = value;
+  }
+
+  onGoalscorerBlur(): void {
+    // If input doesn't match a valid selection, revert to last valid value
+    const valid = this.goalscorerSearch === 'No Winning Goal (Draw)' ||
+      this.players.some(p => p.playerName === this.goalscorerSearch);
+    if (!valid) {
+      this.goalscorerSearch = this.prediction.winningGoalscorerPredicted || '';
+    }
   }
 
   goBack(): void { this.router.navigate(['/home']); }

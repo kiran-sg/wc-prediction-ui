@@ -135,13 +135,22 @@ const STAGE_FULL: Record<string, string> = {
                 <mat-card class="section-card">
                   <h4>Winning Goalscorer</h4>
                   <mat-form-field appearance="outline" class="full-width">
-                    <mat-label>Select Player</mat-label>
-                    <mat-select [(ngModel)]="result.winningGoalscorer" name="winningGoalscorer" required>
+                    <mat-label>Search player</mat-label>
+                    <mat-icon matPrefix>search</mat-icon>
+                    <input matInput
+                           [(ngModel)]="goalscorerSearch"
+                           name="goalscorerSearch"
+                           (ngModelChange)="filterGoalscorerPlayers()"
+                           (blur)="onGoalscorerBlur()"
+                           [matAutocomplete]="goalscorerAuto"
+                           placeholder="Type name or team...">
+                    <mat-autocomplete #goalscorerAuto="matAutocomplete"
+                                      (optionSelected)="onGoalscorerSelected($event.option.value)">
                       <mat-option value="No Winning Goal (Draw)">No Winning Goal (Draw)</mat-option>
-                      @for (player of players; track player.id) {
+                      @for (player of filteredGoalscorerPlayers; track player.id) {
                         <mat-option [value]="player.playerName">{{ player.playerName }} ({{ player.team }})</mat-option>
                       }
-                    </mat-select>
+                    </mat-autocomplete>
                   </mat-form-field>
                 </mat-card>
 
@@ -530,6 +539,8 @@ export class AdminComponent implements OnInit {
   private matchLabels = new Map<string, string>();
   matchSearch = '';
   players: WcPlayer[] = [];
+  filteredGoalscorerPlayers: WcPlayer[] = [];
+  goalscorerSearch = '';
   selectedMatch: WcMatch | null = null;
   result: MatchResult = this.emptyResult();
   saving = false;
@@ -691,10 +702,11 @@ export class AdminComponent implements OnInit {
       this.predictions = [];
       this.filteredPredictions = [];
       this.userSearch = '';
+      this.goalscorerSearch = '';
       this.api.getPlayersByTeams([this.selectedMatch.teamA, this.selectedMatch.teamB])
-        .subscribe(p => this.players = p);
+        .subscribe(p => { this.players = p; this.filteredGoalscorerPlayers = p; });
       this.api.getMatchResult(matchNo).subscribe(res => {
-        if (res.matchResult) this.result = res.matchResult;
+        if (res.matchResult) { this.result = res.matchResult; this.goalscorerSearch = res.matchResult.winningGoalscorer || ''; }
       });
       this.loadingPredictions = true;
       this.api.getPredictionsByMatch(matchNo).subscribe({
@@ -728,6 +740,7 @@ export class AdminComponent implements OnInit {
         this.fetching = false;
         if (res.status && res.matchResult) {
           this.result = res.matchResult;
+          this.goalscorerSearch = res.matchResult.winningGoalscorer || '';
           this.fetchSuccess = true;
           this.fetchMessage = 'Result fetched — review winning goalscorer and submit.';
         } else {
@@ -792,6 +805,26 @@ export class AdminComponent implements OnInit {
   isQ3Correct(p: Prediction): boolean {
     return !!this.result.matchResult && !!p.winningGoalscorerPredicted &&
       p.winningGoalscorerPredicted === this.result.winningGoalscorer;
+  }
+
+  filterGoalscorerPlayers(): void {
+    const s = this.goalscorerSearch.toLowerCase().trim();
+    this.filteredGoalscorerPlayers = s
+      ? this.players.filter(p => p.playerName.toLowerCase().includes(s) || p.team.toLowerCase().includes(s))
+      : this.players;
+  }
+
+  onGoalscorerSelected(value: string): void {
+    this.result.winningGoalscorer = value;
+    this.goalscorerSearch = value;
+  }
+
+  onGoalscorerBlur(): void {
+    const valid = this.goalscorerSearch === 'No Winning Goal (Draw)' ||
+      this.players.some(p => p.playerName === this.goalscorerSearch);
+    if (!valid) {
+      this.goalscorerSearch = this.result.winningGoalscorer || '';
+    }
   }
 
   syncTeams(): void {
