@@ -23,6 +23,10 @@ export class AuthService {
     return this.currentUser?.isAdmin ?? false;
   }
 
+  get isSuperAdmin(): boolean {
+    return this.currentUser?.isSuperAdmin ?? false;
+  }
+
   login(userId: string): Observable<{ validUser: boolean; user: WcUser; message: string }> {
     return this.http.post<{ validUser: boolean; user: WcUser; message: string }>(
       `${environment.apiUrl}/users/validate`,

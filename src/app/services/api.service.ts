@@ -86,4 +86,21 @@ export class ApiService {
     form.append('file', file);
     return this.http.post<any>(`${this.api}/admin/users/upload`, form);
   }
+
+  // DB Config (superadmin)
+  getDbTables(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.api}/superadmin/db/tables`);
+  }
+
+  getDbRows(table: string, q = '', offset = 0, limit = 50): Observable<{ rows: any[]; total: number }> {
+    return this.http.get<{ rows: any[]; total: number }>(`${this.api}/superadmin/db/table/${table}`, { params: { q, offset, limit } });
+  }
+
+  updateDbRow(table: string, id: any, fields: Record<string, any>): Observable<any> {
+    return this.http.patch<any>(`${this.api}/superadmin/db/table/${table}/${id}`, fields);
+  }
+
+  deleteDbRow(table: string, id: any): Observable<any> {
+    return this.http.delete<any>(`${this.api}/superadmin/db/table/${table}/${id}`);
+  }
 }

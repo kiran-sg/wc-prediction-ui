@@ -3,6 +3,7 @@ export interface WcUser {
   name: string;
   location: string;
   isAdmin: boolean;
+  isSuperAdmin?: boolean;
 }
 
 export interface WcMatch {
