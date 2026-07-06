@@ -196,6 +196,18 @@ export class PredictComponent implements OnInit {
   }
 
   submit(): void {
+    if (!this.prediction.matchResultPredicted) {
+      this.snackBar.open('Please select who progresses to the next round.', 'OK', { duration: 3000 });
+      return;
+    }
+    if (this.prediction.scoreTeamAPredicted == null || this.prediction.scoreTeamBPredicted == null) {
+      this.snackBar.open('Please enter the exact score for both teams.', 'OK', { duration: 3000 });
+      return;
+    }
+    if (!this.prediction.winningGoalscorerPredicted) {
+      this.snackBar.open('Please select a winning goalscorer.', 'OK', { duration: 3000 });
+      return;
+    }
     this.saving = true;
     this.api.savePrediction(this.prediction).subscribe({
       next: (res) => {
