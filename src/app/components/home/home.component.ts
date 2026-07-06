@@ -173,7 +173,7 @@ export class HomeComponent implements OnInit {
     const stageOrder = ['R32', 'R16', 'QF', 'SF', 'LF', 'FINAL'];
     const sorted = [...matches].sort((a, b) => {
       const si = stageOrder.indexOf(a.stage ?? '') - stageOrder.indexOf(b.stage ?? '');
-      return si !== 0 ? si : (Number(a.matchNo) - Number(b.matchNo));
+      return si !== 0 ? si : (a.dateTime ?? '').localeCompare(b.dateTime ?? '');
     });
     sorted.forEach(m => {
       const s = m.stage ?? 'FINAL';

@@ -363,112 +363,101 @@ const STAGE_FULL: Record<string, string> = {
         @if (auth.isSuperAdmin) {
           <mat-tab label="DB Config">
             <div class="tab-content">
-              <div class="db-layout">
-
-                <!-- Table sidebar -->
-                <div class="db-sidebar">
-                  @for (t of dbTables; track t.name) {
-                    <button class="db-table-btn" [class.active]="dbSelectedTable?.name === t.name"
-                            (click)="selectDbTable(t)">
-                      <mat-icon>table_chart</mat-icon>
-                      <span>{{ t.label }}</span>
+              <mat-tab-group animationDuration="150ms" class="db-tabs"
+                             (selectedTabChange)="selectDbTable(dbTables[$event.index])">
+                @for (t of dbTables; track t.name) {
+                  <mat-tab>
+                    <ng-template mat-tab-label>
+                      {{ t.label }}
                       @if (dbSelectedTable?.name === t.name && dbTotal >= 0) {
-                        <span class="db-count">{{ dbTotal }}</span>
+                        <span class="tab-badge">{{ dbTotal }}</span>
                       }
-                    </button>
-                  }
-                </div>
+                    </ng-template>
 
-                <!-- Table content -->
-                <div class="db-main">
-                  @if (!dbSelectedTable) {
-                    <div class="db-empty">Select a table</div>
-                  } @else {
-
-                    <!-- Toolbar -->
-                    <div class="db-toolbar">
-                      <div class="user-search-bar db-search">
-                        <mat-icon class="search-icon-inline">search</mat-icon>
-                        <input class="user-search-input" placeholder="Search..."
-                               [(ngModel)]="dbSearch" (keyup.enter)="loadDbRows()">
-                        @if (dbSearch) {
-                          <button class="clear-search" (click)="dbSearch=''; loadDbRows()">
-                            <mat-icon>close</mat-icon>
-                          </button>
-                        }
+                    <div class="db-tab-content">
+                      <!-- Toolbar -->
+                      <div class="db-toolbar">
+                        <div class="user-search-bar db-search">
+                          <mat-icon class="search-icon-inline">search</mat-icon>
+                          <input class="user-search-input" placeholder="Search..."
+                                 [(ngModel)]="dbSearch" (keyup.enter)="loadDbRows()">
+                          @if (dbSearch) {
+                            <button class="clear-search" (click)="dbSearch=''; loadDbRows()">
+                              <mat-icon>close</mat-icon>
+                            </button>
+                          }
+                        </div>
+                        <button mat-stroked-button (click)="loadDbRows()" [disabled]="dbLoading">
+                          <mat-icon>refresh</mat-icon>
+                        </button>
                       </div>
-                      <button mat-stroked-button (click)="loadDbRows()" [disabled]="dbLoading">
-                        <mat-icon>refresh</mat-icon>
-                      </button>
-                    </div>
 
-                    <!-- Table -->
-                    @if (dbLoading) {
-                      <div class="db-loading"><mat-spinner diameter="28"></mat-spinner></div>
-                    } @else if (dbRows.length === 0) {
-                      <div class="db-empty">No rows found</div>
-                    } @else {
-                      <div class="db-table-wrap">
-                        <table class="db-table">
-                          <thead>
-                            <tr>
-                              @for (col of dbSelectedTable.columns; track col) {
-                                <th>{{ col }}</th>
-                              }
-                              <th class="db-actions-th">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            @for (row of dbRows; track row['id']) {
-                              <tr [class.editing]="dbEditingId === row['id']">
+                      @if (dbLoading) {
+                        <div class="db-loading"><mat-spinner diameter="28"></mat-spinner></div>
+                      } @else if (dbRows.length === 0) {
+                        <div class="db-empty">No rows found</div>
+                      } @else {
+                        <div class="db-table-wrap">
+                          <table class="db-table">
+                            <thead>
+                              <tr>
                                 @for (col of dbSelectedTable.columns; track col) {
-                                  <td>
-                                    @if (dbEditingId === row['id'] && col !== 'id') {
-                                      <input class="db-cell-input" [(ngModel)]="dbEditRow[col]"
-                                             [type]="isNumericCol(col) ? 'number' : 'text'">
+                                  <th>{{ col }}</th>
+                                }
+                                <th class="db-actions-th">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              @for (row of dbRows; track row['id']) {
+                                <tr [class.editing]="dbEditingId === row['id']">
+                                  @for (col of dbSelectedTable.columns; track col) {
+                                    <td>
+                                      @if (dbEditingId === row['id'] && col !== 'id') {
+                                        <input class="db-cell-input" [(ngModel)]="dbEditRow[col]"
+                                               [type]="isNumericCol(col) ? 'number' : 'text'">
+                                      } @else {
+                                        <span class="db-cell-val">{{ row[col] ?? '—' }}</span>
+                                      }
+                                    </td>
+                                  }
+                                  <td class="db-actions-td">
+                                    @if (dbEditingId === row['id']) {
+                                      <button class="db-action-btn save" (click)="saveDbRow(row)" title="Save">
+                                        <mat-icon>check</mat-icon>
+                                      </button>
+                                      <button class="db-action-btn cancel" (click)="cancelDbEdit()" title="Cancel">
+                                        <mat-icon>close</mat-icon>
+                                      </button>
                                     } @else {
-                                      <span class="db-cell-val">{{ row[col] ?? '—' }}</span>
+                                      <button class="db-action-btn edit" (click)="startDbEdit(row)" title="Edit">
+                                        <mat-icon>edit</mat-icon>
+                                      </button>
+                                      <button class="db-action-btn del" (click)="confirmDeleteDbRow(row)" title="Delete">
+                                        <mat-icon>delete</mat-icon>
+                                      </button>
                                     }
                                   </td>
-                                }
-                                <td class="db-actions-td">
-                                  @if (dbEditingId === row['id']) {
-                                    <button class="db-action-btn save" (click)="saveDbRow(row)" title="Save">
-                                      <mat-icon>check</mat-icon>
-                                    </button>
-                                    <button class="db-action-btn cancel" (click)="cancelDbEdit()" title="Cancel">
-                                      <mat-icon>close</mat-icon>
-                                    </button>
-                                  } @else {
-                                    <button class="db-action-btn edit" (click)="startDbEdit(row)" title="Edit">
-                                      <mat-icon>edit</mat-icon>
-                                    </button>
-                                    <button class="db-action-btn del" (click)="confirmDeleteDbRow(row)" title="Delete">
-                                      <mat-icon>delete</mat-icon>
-                                    </button>
-                                  }
-                                </td>
-                              </tr>
-                            }
-                          </tbody>
-                        </table>
-                      </div>
+                                </tr>
+                              }
+                            </tbody>
+                          </table>
+                        </div>
 
-                      <!-- Pagination -->
-                      <div class="db-pagination">
-                        <span class="db-page-info">{{ dbOffset + 1 }}–{{ dbOffset + dbRows.length }} of {{ dbTotal }}</span>
-                        <button mat-icon-button [disabled]="dbOffset === 0" (click)="dbPage(-1)">
-                          <mat-icon>chevron_left</mat-icon>
-                        </button>
-                        <button mat-icon-button [disabled]="dbOffset + dbPageSize >= dbTotal" (click)="dbPage(1)">
-                          <mat-icon>chevron_right</mat-icon>
-                        </button>
-                      </div>
-                    }
-                  }
-                </div>
-
-              </div>
+                        <!-- Pagination -->
+                        <div class="db-pagination">
+                          <span class="db-page-info">{{ dbOffset + 1 }}–{{ dbOffset + dbRows.length }} of {{ dbTotal }}</span>
+                          <button mat-icon-button [disabled]="dbOffset === 0" (click)="dbPage(-1)">
+                            <mat-icon>chevron_left</mat-icon>
+                          </button>
+                          <button mat-icon-button [disabled]="dbOffset + dbPageSize >= dbTotal" (click)="dbPage(1)">
+                            <mat-icon>chevron_right</mat-icon>
+                          </button>
+                        </div>
+                      }
+                    </div>
+                  </mat-tab>
+                }
+              </mat-tab-group>
             </div>
           </mat-tab>
         }
@@ -649,21 +638,8 @@ const STAGE_FULL: Record<string, string> = {
     }
 
     /* DB Config */
-    .db-layout { display: flex; gap: 12px; min-height: 400px; }
-    .db-sidebar { display: flex; flex-direction: column; gap: 4px; width: 130px; flex-shrink: 0; }
-    .db-table-btn {
-      display: flex; align-items: center; gap: 8px;
-      padding: 10px 10px; border: 1px solid #e0e0e0; border-radius: 10px;
-      background: #fff; cursor: pointer; font-size: 13px; color: #444;
-      text-align: left; transition: all 0.15s;
-    }
-    .db-table-btn mat-icon { font-size: 16px; width: 16px; height: 16px; color: #9e9e9e; flex-shrink: 0; }
-    .db-table-btn span { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .db-table-btn:hover { background: #f5f5f5; border-color: #bdbdbd; }
-    .db-table-btn.active { background: #e8eaf6; border-color: #7986cb; color: #1a237e; font-weight: 600; }
-    .db-table-btn.active mat-icon { color: #1a237e; }
-    .db-count { background: #1a237e; color: #fff; border-radius: 10px; font-size: 10px; font-weight: 700; padding: 1px 6px; flex-shrink: 0; }
-    .db-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+    .db-tabs { margin-top: 0; }
+    .db-tab-content { padding: 16px 0; display: flex; flex-direction: column; gap: 10px; }
     .db-toolbar { display: flex; gap: 8px; align-items: center; }
     .db-search { flex: 1; margin-bottom: 0 !important; }
     .db-loading { display: flex; justify-content: center; padding: 40px; }
@@ -698,11 +674,6 @@ const STAGE_FULL: Record<string, string> = {
     .db-action-btn:hover { background: #f0f0f0; }
     .db-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
     .db-page-info { font-size: 12px; color: #888; margin-right: 4px; }
-    @media (max-width: 600px) {
-      .db-layout { flex-direction: column; }
-      .db-sidebar { flex-direction: row; width: 100%; overflow-x: auto; }
-      .db-table-btn { min-width: 90px; }
-    }
   `]
 })
 export class AdminComponent implements OnInit {
