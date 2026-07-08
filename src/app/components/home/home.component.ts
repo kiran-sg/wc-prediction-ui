@@ -11,7 +11,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
-import { WcMatch, Prediction } from '../../models/models';
+import { WcMatch, Prediction, TournamentPrediction } from '../../models/models';
 
 const STAGE_FULL: Record<string, string> = {
   R32: 'Round of 32', R16: 'Round of 16', QF: 'Quarter Final',
@@ -25,6 +25,30 @@ const STAGE_FULL: Record<string, string> = {
   template: `
     <div class="container">
       <h3 class="page-title">FIFA WC 2026 Prediction Contest</h3>
+
+      <!-- Tournament prediction banner -->
+      @if (!auth.isAdmin) {
+        <div class="tourn-banner" [class.done]="hasTournamentPrediction" [class.closed]="!tournamentOpen" (click)="router.navigate(['/tournament'])">
+          <span class="tourn-banner-icon">🏆</span>
+          <div class="tourn-banner-text">
+            <span class="tourn-banner-title">Tournament Predictions</span>
+            @if (!tournamentOpen) {
+              <span class="tourn-banner-sub">🔒 Predictions are closed.</span>
+            } @else if (hasTournamentPrediction) {
+              <span class="tourn-banner-sub">Your picks are in! Tap to view.</span>
+            } @else {
+              <span class="tourn-banner-sub">Predict award winners — 5 questions, 15 pts!</span>
+            }
+          </div>
+          @if (tournamentOpen && !hasTournamentPrediction) {
+            <span class="tourn-pending-badge">Pending</span>
+          }
+          @if (!tournamentOpen) {
+            <span class="tourn-closed-badge">Closed</span>
+          }
+          <mat-icon class="tourn-arrow">chevron_right</mat-icon>
+        </div>
+      }
 
       <!-- Search bar -->
       <div class="search-bar">
@@ -84,6 +108,29 @@ const STAGE_FULL: Record<string, string> = {
   `,
   styles: [`
     .page-title { margin: 0 0 12px; color: #1a237e; font-size: 18px; font-weight: 700; }
+    .tourn-banner {
+      display: flex; align-items: center; gap: 12px;
+      background: linear-gradient(135deg, #1a237e, #3949ab);
+      color: #fff; border-radius: 14px; padding: 14px 16px;
+      margin-bottom: 12px; cursor: pointer; transition: opacity 0.15s;
+      touch-action: manipulation;
+    }
+    .tourn-banner:active { opacity: 0.85; }
+    .tourn-banner.done { background: linear-gradient(135deg, #1b5e20, #388e3c); }
+    .tourn-banner.closed { background: linear-gradient(135deg, #37474f, #546e7a); }
+    .tourn-banner-icon { font-size: 28px; flex-shrink: 0; line-height: 1; }
+    .tourn-banner-text { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .tourn-banner-title { font-size: 14px; font-weight: 700; }
+    .tourn-banner-sub { font-size: 11px; opacity: 0.85; }
+    .tourn-pending-badge {
+      padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;
+      background: rgba(255,255,255,0.2); flex-shrink: 0;
+    }
+    .tourn-closed-badge {
+      padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;
+      background: rgba(255,255,255,0.15); flex-shrink: 0; letter-spacing: 0.3px;
+    }
+    .tourn-arrow { opacity: 0.7; flex-shrink: 0; }
     .search-bar { display: flex; margin-bottom: 8px; }
     .search-field { flex: 1; }
     .search-field .mat-mdc-form-field-subscript-wrapper { display: none; }
@@ -142,9 +189,11 @@ export class HomeComponent implements OnInit {
   loading = true;
   searchText = '';
   predictedMatchIds = new Set<string>();
+  hasTournamentPrediction = false;
+  tournamentOpen = true;
   private matchLabels = new Map<string, string>();
 
-  constructor(private api: ApiService, public auth: AuthService, private router: Router) {}
+  constructor(private api: ApiService, public auth: AuthService, public router: Router) {}
 
   ngOnInit(): void {
     this.api.getMatches().subscribe({
@@ -164,6 +213,14 @@ export class HomeComponent implements OnInit {
         next: (res) => {
           this.predictedMatchIds = new Set(res.predictions.map(p => p.matchId));
         }
+      });
+      this.api.getTournamentPrediction(this.auth.currentUser!.userId).subscribe({
+        next: (res) => { this.hasTournamentPrediction = !!(res.prediction && res.prediction.userId); },
+        error: () => {}
+      });
+      this.api.isTournamentOpen().subscribe({
+        next: (res) => { this.tournamentOpen = res.open; },
+        error: () => {}
       });
     }
   }

@@ -15,9 +15,10 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
-import { WcMatch, WcPlayer, MatchResult, Prediction } from '../../models/models';
+import { WcMatch, WcPlayer, MatchResult, Prediction, TournamentResult, TournamentPrediction } from '../../models/models';
 
 const STAGE_FULL: Record<string, string> = {
   R32: 'Round of 32', R16: 'Round of 16', QF: 'Quarter Final',
@@ -31,17 +32,37 @@ const STAGE_FULL: Record<string, string> = {
     CommonModule, FormsModule, MatCardModule, MatFormFieldModule, MatSelectModule,
     MatInputModule, MatButtonModule, MatRadioModule, MatSnackBarModule,
     MatProgressSpinnerModule, MatIconModule, MatAutocompleteModule,
-    MatTabsModule, MatChipsModule, MatTooltipModule, MatDialogModule
+    MatTabsModule, MatChipsModule, MatTooltipModule, MatDialogModule, MatCheckboxModule
   ],
   template: `
     <div class="container">
       <h3>⚙️ Admin</h3>
 
-      <mat-tab-group animationDuration="150ms" class="top-tabs">
+      <!-- Admin nav -->
+      <div class="admin-nav" [class.has-db]="auth.isSuperAdmin">
+        <button class="nav-pill" [class.active]="activeTab==='results'" (click)="activeTab='results'">
+          <mat-icon>sports_soccer</mat-icon>
+          <span>Results</span>
+        </button>
+        <button class="nav-pill" [class.active]="activeTab==='users'" (click)="activeTab='users'">
+          <mat-icon>group</mat-icon>
+          <span>Users</span>
+          @if (allUsers.length > 0) { <span class="pill-badge">{{ allUsers.length }}</span> }
+        </button>
+        <button class="nav-pill" [class.active]="activeTab==='tournament'" (click)="activeTab='tournament'">
+          <mat-icon>emoji_events</mat-icon>
+          <span>Tournament</span>
+        </button>
+        @if (auth.isSuperAdmin) {
+          <button class="nav-pill" [class.active]="activeTab==='db'" (click)="activeTab='db'">
+            <mat-icon>storage</mat-icon>
+            <span>DB Config</span>
+          </button>
+        }
+      </div>
 
-        <!-- ═══ TOP TAB: MATCH RESULTS ═══ -->
-        <mat-tab label="Match Results">
-          <div class="tab-content">
+      @if (activeTab === 'results') {
+        <div class="tab-content">
 
       <!-- Data Sync Card -->
       <mat-card class="sync-card">
@@ -269,20 +290,14 @@ const STAGE_FULL: Record<string, string> = {
         </mat-tab-group>
       }
 
-          </div>
-        </mat-tab>
+        </div>
+      }
 
-        <!-- ═══ TOP TAB: USERS ═══ -->
-        <mat-tab>
-          <ng-template mat-tab-label>
-            Users
-            @if (allUsers.length > 0) {
-              <span class="tab-badge">{{ allUsers.length }}</span>
-            }
-          </ng-template>
-          <div class="tab-content">
+      @if (activeTab === 'users') {
+        <div class="tab-content">
 
-            <!-- Add user form -->
+            <!-- Add user form (hidden when viewing a user's predictions) -->
+            @if (!selectedUser) {
             <mat-card class="section-card add-user-card">
               <h4><mat-icon>person_add</mat-icon> Add New User</h4>
               <div class="add-user-form">
@@ -318,8 +333,10 @@ const STAGE_FULL: Record<string, string> = {
                 </div>
               </div>
             </mat-card>
+            } <!-- end @if (!selectedUser) -->
 
-            <!-- Search + list -->
+            <!-- Search + list (hidden when viewing a user's predictions) -->
+            @if (!selectedUser) {
             <div class="user-search-bar">
               <mat-icon class="search-icon-inline">search</mat-icon>
               <input class="user-search-input" placeholder="Search by name or user ID..."
@@ -330,39 +347,285 @@ const STAGE_FULL: Record<string, string> = {
                 </button>
               }
             </div>
+            } <!-- end @if (!selectedUser) search bar -->
 
-            @if (loadingUsers) {
-              <div class="text-center mt-16">Loading users...</div>
-            } @else {
-              <div class="users-summary">
-                <span class="summary-chip total" [class.active]="locationFilter === ''" (click)="setLocationFilter('')">{{ allUsers.length }} All</span>
-                <span class="summary-chip scored" [class.active]="locationFilter === 'TVM'" (click)="setLocationFilter('TVM')">{{ tvmCount }} TVM</span>
-                <span class="summary-chip q1" [class.active]="locationFilter === 'Pune'" (click)="setLocationFilter('Pune')">{{ puneCount }} Pune</span>
-              </div>
-              @for (u of filteredUsers; track u.userId) {
-                <div class="user-row">
-                  <mat-icon class="user-row-icon">account_circle</mat-icon>
-                  <div class="user-row-info">
-                    <span class="user-row-name">{{ u.name }}</span>
-                    <span class="user-row-meta">{{ u.userId }} · {{ u.location }}</span>
-                  </div>
-                  @if (u.isAdmin) {
-                    <span class="admin-chip">Admin</span>
-                  }
+            @if (selectedUser) {
+              <!-- ── User predictions detail ── -->
+              <div class="user-detail-header">
+                <button mat-icon-button (click)="closeUserDetail()">
+                  <mat-icon>arrow_back</mat-icon>
+                </button>
+                <div class="user-detail-info">
+                  <span class="user-detail-name">{{ selectedUser.name }}</span>
+                  <span class="user-detail-meta">{{ selectedUser.userId }} · {{ selectedUser.location }}</span>
                 </div>
+                @if (userPredTotalPoints > 0) {
+                  <span class="pts-chip">{{ userPredTotalPoints }} pts</span>
+                }
+              </div>
+
+              @if (loadingUserPreds) {
+                <div class="text-center mt-16">Loading predictions...</div>
+              } @else if (userPredictions.length === 0) {
+                <div class="empty-preds">
+                  <mat-icon>inbox</mat-icon>
+                  <p>No predictions submitted yet.</p>
+                </div>
+              } @else {
+                @for (p of userPredictions; track p.predictionId) {
+                  <div class="pred-row" [class.has-points]="p.points != null">
+                    <div class="pred-user">
+                      <div class="user-details" style="flex:1">
+                        <span class="user-name">{{ p.match || p.matchId }}</span>
+                        <span class="user-id">{{ p.matchDate }}</span>
+                      </div>
+                      @if (p.points != null) {
+                        <span class="pts-chip" [class.zero]="p.points === 0" [class.max]="p.points >= 13">
+                          {{ p.points }} pts
+                        </span>
+                      } @else {
+                        <span class="pts-chip pending">Pending</span>
+                      }
+                    </div>
+                    <div class="pred-answers">
+                      <div class="ans-cell">
+                        <span class="ans-label">Who progresses</span>
+                        <span class="ans-val">{{ formatUserPredResult(p) }}</span>
+                      </div>
+                      <div class="ans-cell">
+                        <span class="ans-label">Score</span>
+                        <span class="ans-val">{{ p.scoreTeamAPredicted }} – {{ p.scoreTeamBPredicted }}</span>
+                      </div>
+                      <div class="ans-cell">
+                        <span class="ans-label">Goalscorer</span>
+                        <span class="ans-val">{{ p.winningGoalscorerPredicted || '—' }}</span>
+                      </div>
+                    </div>
+                  </div>
+                }
               }
-              @if (filteredUsers.length === 0 && allUsersSearch) {
-                <div class="empty-preds"><p>No users match "{{ allUsersSearch }}"</p></div>
+            } @else {
+              <!-- ── User list ── -->
+              @if (loadingUsers) {
+                <div class="text-center mt-16">Loading users...</div>
+              } @else {
+                <div class="users-summary">
+                  <span class="summary-chip total" [class.active]="locationFilter === ''" (click)="setLocationFilter('')">{{ allUsers.length }} All</span>
+                  <span class="summary-chip scored" [class.active]="locationFilter === 'TVM'" (click)="setLocationFilter('TVM')">{{ tvmCount }} TVM</span>
+                  <span class="summary-chip q1" [class.active]="locationFilter === 'Pune'" (click)="setLocationFilter('Pune')">{{ puneCount }} Pune</span>
+                </div>
+                @for (u of filteredUsers; track u.userId) {
+                  <div class="user-row clickable" (click)="openUserDetail(u)">
+                    <mat-icon class="user-row-icon">account_circle</mat-icon>
+                    <div class="user-row-info">
+                      <span class="user-row-name">{{ u.name }}</span>
+                      <span class="user-row-meta">{{ u.userId }} · {{ u.location }}</span>
+                    </div>
+                    @if (u.isAdmin) {
+                      <span class="admin-chip">Admin</span>
+                    } @else {
+                      <mat-icon class="user-row-chevron">chevron_right</mat-icon>
+                    }
+                  </div>
+                }
+                @if (filteredUsers.length === 0 && allUsersSearch) {
+                  <div class="empty-preds"><p>No users match "{{ allUsersSearch }}"</p></div>
+                }
               }
             }
 
-          </div>
-        </mat-tab>
+        </div>
+      }
 
-        <!-- ═══ TOP TAB: DB CONFIG (superadmin only) ═══ -->
-        @if (auth.isSuperAdmin) {
-          <mat-tab label="DB Config">
-            <div class="tab-content">
+      @if (activeTab === 'tournament') {
+        <div class="tab-content">
+
+            <!-- Open/Close toggle -->
+            <mat-card class="section-card">
+              <div class="tourn-open-row">
+                <div>
+                  <h4 style="margin:0 0 4px"><mat-icon>lock_open</mat-icon> Tournament Predictions</h4>
+                  <p class="hint-text" style="margin:0">{{ tournamentOpen ? 'Users can currently submit predictions.' : 'Predictions are closed — users cannot submit.' }}</p>
+                </div>
+                <button mat-raised-button [color]="tournamentOpen ? 'warn' : 'primary'" (click)="toggleTournamentOpen()" [disabled]="togglingTournament">
+                  <mat-icon>{{ tournamentOpen ? 'lock' : 'lock_open' }}</mat-icon>
+                  {{ tournamentOpen ? 'Close Predictions' : 'Open Predictions' }}
+                </button>
+              </div>
+            </mat-card>
+
+            <!-- Current Results — only editable when predictions are closed -->
+            <mat-card class="section-card">
+              <h4><mat-icon>emoji_events</mat-icon> Tournament Award Winners</h4>
+              @if (tournamentOpen) {
+                <div class="tourn-locked-notice">
+                  <mat-icon>info</mat-icon>
+                  Close predictions first before entering results.
+                </div>
+              } @else {
+              <p class="hint-text">Enter the actual award winners to calculate tournament prediction points for all users.</p>
+              <div class="tourn-form">
+                <div class="tourn-field">
+                  <img src="trionda.png" class="tourn-ball-img" alt="Golden Ball">
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Golden Ball — Best Player</mat-label>
+                    <mat-icon matPrefix>search</mat-icon>
+                    <input matInput [(ngModel)]="tournResult.goldenBall"
+                           (ngModelChange)="filterTournPlayers('goldenBall')"
+                           (blur)="onTournBlur('goldenBall')"
+                           [matAutocomplete]="gbAuto" placeholder="Search player...">
+                    <mat-autocomplete #gbAuto="matAutocomplete">
+                      @for (p of tournFiltered['goldenBall']; track p) {
+                        <mat-option [value]="p" (click)="onTournSelect('goldenBall', p)">{{ p }}{{ tournTeamFor(p) ? ' (' + tournTeamFor(p) + ')' : '' }}</mat-option>
+                      }
+                    </mat-autocomplete>
+                  </mat-form-field>
+                </div>
+                <div class="tourn-field">
+                  <span class="tourn-emoji">👟</span>
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Golden Boot — Top Goalscorer</mat-label>
+                    <mat-icon matPrefix>search</mat-icon>
+                    <input matInput [(ngModel)]="tournResult.goldenBoot"
+                           (ngModelChange)="filterTournPlayers('goldenBoot')"
+                           (blur)="onTournBlur('goldenBoot')"
+                           [matAutocomplete]="gboAuto" placeholder="Search player...">
+                    <mat-autocomplete #gboAuto="matAutocomplete">
+                      @for (p of tournFiltered['goldenBoot']; track p) {
+                        <mat-option [value]="p" (click)="onTournSelect('goldenBoot', p)">{{ p }}{{ tournTeamFor(p) ? ' (' + tournTeamFor(p) + ')' : '' }}</mat-option>
+                      }
+                    </mat-autocomplete>
+                  </mat-form-field>
+                </div>
+                <div class="tourn-field">
+                  <span class="tourn-emoji">🧤</span>
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Golden Glove — Best Goalkeeper</mat-label>
+                    <mat-icon matPrefix>search</mat-icon>
+                    <input matInput [(ngModel)]="tournResult.goldenGlove"
+                           (ngModelChange)="filterTournPlayers('goldenGlove')"
+                           (blur)="onTournBlur('goldenGlove')"
+                           [matAutocomplete]="ggAuto" placeholder="Search player...">
+                    <mat-autocomplete #ggAuto="matAutocomplete">
+                      @for (p of tournFiltered['goldenGlove']; track p) {
+                        <mat-option [value]="p" (click)="onTournSelect('goldenGlove', p)">{{ p }}{{ tournTeamFor(p) ? ' (' + tournTeamFor(p) + ')' : '' }}</mat-option>
+                      }
+                    </mat-autocomplete>
+                  </mat-form-field>
+                </div>
+                <div class="tourn-field">
+                  <span class="tourn-emoji">🌟</span>
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Young Player Award — Best U21</mat-label>
+                    <mat-icon matPrefix>search</mat-icon>
+                    <input matInput [(ngModel)]="tournResult.youngPlayer"
+                           (ngModelChange)="filterTournPlayers('youngPlayer')"
+                           (blur)="onTournBlur('youngPlayer')"
+                           [matAutocomplete]="ypAuto" placeholder="Search player...">
+                    <mat-autocomplete #ypAuto="matAutocomplete">
+                      @for (p of tournFiltered['youngPlayer']; track p) {
+                        <mat-option [value]="p" (click)="onTournSelect('youngPlayer', p)">{{ p }}{{ tournTeamFor(p) ? ' (' + tournTeamFor(p) + ')' : '' }}</mat-option>
+                      }
+                    </mat-autocomplete>
+                  </mat-form-field>
+                </div>
+                <div class="tourn-field">
+                  <span class="tourn-emoji">🤝</span>
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Fair Play Trophy — Fewest cards &amp; infractions</mat-label>
+                    <mat-icon matPrefix>search</mat-icon>
+                    <input matInput [(ngModel)]="tournResult.fairPlayTeam"
+                           (ngModelChange)="filterTournTeams()"
+                           (blur)="onTournTeamBlur()"
+                           [matAutocomplete]="fpAuto" placeholder="Search team...">
+                    <mat-autocomplete #fpAuto="matAutocomplete">
+                      @for (t of tournFilteredTeams; track t) {
+                        <mat-option [value]="t" (click)="onTournSelect('fairPlayTeam', t)">{{ t }}</mat-option>
+                      }
+                    </mat-autocomplete>
+                  </mat-form-field>
+                </div>
+              </div>
+              <button mat-raised-button color="warn" class="full-width submit-btn"
+                      (click)="saveTournamentResult()" [disabled]="savingTournResult">
+                {{ savingTournResult ? 'Saving...' : 'Save Results &amp; Calculate Points' }}
+              </button>
+              @if (tournResultMsg) {
+                <div class="sync-msg" [class.error]="!tournResultSuccess" style="margin-top:10px">{{ tournResultMsg }}</div>
+              }
+              } <!-- end @else !tournamentOpen -->
+            </mat-card>
+
+            <!-- User Predictions -->
+            <mat-card class="section-card" style="margin-top:0">
+              <h4><mat-icon>group</mat-icon> User Tournament Predictions
+                @if (tournPredictions.length > 0) {
+                  <span class="tab-badge" style="margin-left:8px">{{ tournPredictions.length }}</span>
+                }
+              </h4>
+              @if (loadingTournPreds) {
+                <div class="text-center mt-16">Loading...</div>
+              } @else if (tournPredictions.length === 0) {
+                <div class="empty-preds"><p>No tournament predictions submitted yet.</p></div>
+              } @else {
+                <div class="user-search-bar" style="margin-bottom:12px">
+                  <mat-icon class="search-icon-inline">search</mat-icon>
+                  <input class="user-search-input" placeholder="Search by name or user ID..."
+                         [(ngModel)]="tournSearch" (ngModelChange)="filterTournPredictions()">
+                  @if (tournSearch) {
+                    <button class="clear-search" (click)="tournSearch=''; filterTournPredictions()">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  }
+                </div>
+                @for (tp of filteredTournPredictions; track tp.userId) {
+                  <div class="tourn-pred-row">
+                    <div class="pred-user">
+                      <mat-icon class="user-icon">account_circle</mat-icon>
+                      <div class="user-details">
+                        <span class="user-name">{{ tp.userName || tp.userId }}</span>
+                      </div>
+                      @if (!hasResult) {
+                        <span class="pts-chip pending">Pending</span>
+                      } @else if (tp.totalPoints != null && tp.totalPoints > 0) {
+                        <span class="pts-chip" [class.max]="tp.totalPoints >= 15">{{ tp.totalPoints }} pts</span>
+                      } @else {
+                        <span class="pts-chip pending">0 pts</span>
+                      }
+                    </div>
+                    <div class="tourn-answers">
+                      <div class="tourn-ans" [class.correct]="isCorrect(tp, 'goldenBall')" [class.wrong]="hasResult && !isCorrect(tp, 'goldenBall')">
+                        <span class="ans-label"><img src="trionda.png" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;margin-right:3px"> Golden Ball</span>
+                        <span class="ans-val">{{ tp.goldenBall || '—' }}</span>
+                      </div>
+                      <div class="tourn-ans" [class.correct]="isCorrect(tp, 'goldenBoot')" [class.wrong]="hasResult && !isCorrect(tp, 'goldenBoot')">
+                        <span class="ans-label">👟 Golden Boot</span>
+                        <span class="ans-val">{{ tp.goldenBoot || '—' }}</span>
+                      </div>
+                      <div class="tourn-ans" [class.correct]="isCorrect(tp, 'goldenGlove')" [class.wrong]="hasResult && !isCorrect(tp, 'goldenGlove')">
+                        <span class="ans-label">🧤 Golden Glove</span>
+                        <span class="ans-val">{{ tp.goldenGlove || '—' }}</span>
+                      </div>
+                      <div class="tourn-ans" [class.correct]="isCorrect(tp, 'youngPlayer')" [class.wrong]="hasResult && !isCorrect(tp, 'youngPlayer')">
+                        <span class="ans-label">🌟 Young Player</span>
+                        <span class="ans-val">{{ tp.youngPlayer || '—' }}</span>
+                      </div>
+                      <div class="tourn-ans" [class.correct]="isCorrect(tp, 'fairPlayTeam')" [class.wrong]="hasResult && !isCorrect(tp, 'fairPlayTeam')">
+                        <span class="ans-label">🤝 Fair Play</span>
+                        <span class="ans-val">{{ tp.fairPlayTeam || '—' }}</span>
+                      </div>
+                    </div>
+                  </div>
+                }
+              }
+            </mat-card>
+
+        </div>
+      }
+
+      <!-- ═══ DB CONFIG (superadmin only) ═══ -->
+      @if (auth.isSuperAdmin && activeTab === 'db') {
+        <div class="tab-content">
               <mat-tab-group animationDuration="150ms" class="db-tabs"
                              (selectedTabChange)="selectDbTable(dbTables[$event.index])">
                 @for (t of dbTables; track t.name) {
@@ -413,10 +676,20 @@ const STAGE_FULL: Record<string, string> = {
                                   @for (col of dbSelectedTable.columns; track col) {
                                     <td>
                                       @if (dbEditingId === row['id'] && col !== 'id') {
-                                        <input class="db-cell-input" [(ngModel)]="dbEditRow[col]"
-                                               [type]="isNumericCol(col) ? 'number' : 'text'">
+                                        @if (isBooleanCol(col, row)) {
+                                          <mat-checkbox [(ngModel)]="dbEditRow[col]"></mat-checkbox>
+                                        } @else {
+                                          <input class="db-cell-input" [(ngModel)]="dbEditRow[col]"
+                                                 [type]="isNumericCol(col) ? 'number' : 'text'">
+                                        }
                                       } @else {
-                                        <span class="db-cell-val">{{ row[col] ?? '—' }}</span>
+                                        @if (isBooleanCol(col, row)) {
+                                          <mat-icon class="bool-icon" [class.bool-true]="row[col] === true || row[col] === 'true'" [class.bool-false]="row[col] !== true && row[col] !== 'true'">
+                                            {{ (row[col] === true || row[col] === 'true') ? 'check_circle' : 'cancel' }}
+                                          </mat-icon>
+                                        } @else {
+                                          <span class="db-cell-val">{{ row[col] ?? '—' }}</span>
+                                        }
                                       }
                                     </td>
                                   }
@@ -458,17 +731,41 @@ const STAGE_FULL: Record<string, string> = {
                   </mat-tab>
                 }
               </mat-tab-group>
-            </div>
-          </mat-tab>
-        }
+        </div>
+      }
 
-      </mat-tab-group>
     </div>
   `,
   styles: [`
-    h3 { color: #1a237e; margin: 0 0 4px; }
-    .top-tabs { margin-top: 0; }
+    h3 { color: #1a237e; margin: 0 0 12px; }
     .tab-content { padding: 16px 0; }
+
+    /* Admin nav pills */
+    .admin-nav {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px;
+    }
+    .admin-nav.has-db { grid-template-columns: repeat(4, 1fr); }
+    .nav-pill {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 4px; padding: 10px 6px; border-radius: 12px; border: 2px solid #e0e0e0;
+      background: #fafafa; cursor: pointer; font-size: 11px; font-weight: 600;
+      color: #666; transition: all 0.15s; touch-action: manipulation;
+      min-height: 60px; position: relative;
+    }
+    .nav-pill mat-icon { font-size: 22px; width: 22px; height: 22px; }
+    .nav-pill:hover { border-color: #9fa8da; background: #f5f5ff; color: #3949ab; }
+    .nav-pill.active { border-color: #1a237e; background: #e8eaf6; color: #1a237e; }
+    .nav-pill.active mat-icon { color: #1a237e; }
+    .pill-badge {
+      position: absolute; top: 6px; right: 8px;
+      background: #1a237e; color: #fff; border-radius: 8px;
+      font-size: 9px; font-weight: 700; min-width: 16px; height: 16px;
+      display: flex; align-items: center; justify-content: center; padding: 0 4px;
+    }
+    @media (max-width: 360px) {
+      .nav-pill { padding: 8px 4px; font-size: 10px; min-height: 54px; }
+      .nav-pill mat-icon { font-size: 20px; width: 20px; height: 20px; }
+    }
 
     /* Sync card */
     .sync-card { padding: 14px 16px; margin-bottom: 16px; border-radius: 12px !important; }
@@ -508,11 +805,22 @@ const STAGE_FULL: Record<string, string> = {
     .users-summary .summary-chip { cursor: pointer; transition: all 0.15s; opacity: 0.7; }
     .users-summary .summary-chip:hover { opacity: 1; }
     .users-summary .summary-chip.active { opacity: 1; box-shadow: 0 0 0 2px currentColor; }
+    .user-detail-header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 4px 0 16px; border-bottom: 1px solid #eee; margin-bottom: 16px;
+    }
+    .user-detail-info { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .user-detail-name { font-size: 16px; font-weight: 700; color: #1a237e; }
+    .user-detail-meta { font-size: 12px; color: #999; }
     .user-row {
       display: flex; align-items: center; gap: 10px;
       padding: 10px 14px; background: #fff; border-radius: 10px;
       margin-bottom: 6px; border: 1px solid #e0e0e0;
     }
+    .user-row.clickable { cursor: pointer; transition: background 0.15s; }
+    .user-row.clickable:hover { background: #f5f7ff; border-color: #c5cae9; }
+    .user-row.clickable:active { background: #e8eaf6; }
+    .user-row-chevron { color: #bdbdbd; font-size: 20px; width: 20px; height: 20px; flex-shrink: 0; margin-left: auto; }
     .user-row-icon { color: #bdbdbd; font-size: 28px; width: 28px; height: 28px; flex-shrink: 0; }
     .user-row-info { flex: 1; display: flex; flex-direction: column; min-width: 0; }
     .user-row-name { font-size: 14px; font-weight: 600; color: #222; }
@@ -534,8 +842,7 @@ const STAGE_FULL: Record<string, string> = {
     .fetch-msg { font-size: 13px; color: #388e3c; }
     .fetch-msg.error { color: #d32f2f; }
 
-    /* Tab badge */
-    .admin-tabs { margin-top: 4px; }
+    /* Tab badge (used inside match predictions sub-tab) */
     .tab-badge {
       display: inline-flex; align-items: center; justify-content: center;
       background: #1a237e; color: #fff; border-radius: 10px;
@@ -637,6 +944,29 @@ const STAGE_FULL: Record<string, string> = {
       .user-name { font-size: 13px; }
     }
 
+    /* Tournament tab */
+    .hint-text { font-size: 12px; color: #666; margin: -4px 0 12px; }
+    .tourn-locked-notice { display: flex; align-items: center; gap: 8px; color: #e65100; background: #fff3e0; border-radius: 8px; padding: 10px 14px; font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+    .tourn-locked-notice mat-icon { font-size: 18px; width: 18px; height: 18px; flex-shrink: 0; }
+    .tourn-open-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .tourn-open-row h4 mat-icon { font-size: 18px; vertical-align: middle; margin-right: 4px; }
+    .tourn-form { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+    .tourn-field { display: flex; align-items: center; gap: 10px; }
+    .tourn-emoji { font-size: 22px; flex-shrink: 0; width: 28px; text-align: center; }
+    .tourn-ball-img { width: 28px; height: 28px; object-fit: contain; flex-shrink: 0; }
+    .tourn-pred-row { background: #fff; border-radius: 10px; border: 1px solid #e0e0e0; margin-bottom: 8px; overflow: hidden; }
+    .tourn-answers { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; padding: 8px 10px; }
+    .tourn-ans { display: flex; flex-direction: column; gap: 2px; padding: 6px; border-radius: 6px; background: #f9f9f9; min-width: 0; }
+    .tourn-ans.correct { background: #f1f8e9; }
+    .tourn-ans.wrong { background: #fce4ec; }
+    .tourn-ans .ans-val { font-size: 11px; word-break: break-word; }
+    @media (max-width: 600px) {
+      .tourn-answers { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 380px) {
+      .tourn-answers { grid-template-columns: 1fr; }
+    }
+
     /* DB Config */
     .db-tabs { margin-top: 0; }
     .db-tab-content { padding: 16px 0; display: flex; flex-direction: column; gap: 10px; }
@@ -654,6 +984,9 @@ const STAGE_FULL: Record<string, string> = {
     .db-table td { padding: 6px 10px; border-bottom: 1px solid #f5f5f5; vertical-align: middle; }
     .db-table tr:last-child td { border-bottom: none; }
     .db-table tr.editing { background: #fffde7; }
+    .bool-icon { font-size: 18px; width: 18px; height: 18px; vertical-align: middle; }
+    .bool-true { color: #2e7d32; }
+    .bool-false { color: #c62828; }
     .db-table tr:hover:not(.editing) { background: #fafafa; }
     .db-cell-val { color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; display: block; }
     .db-cell-input {
@@ -708,11 +1041,34 @@ export class AdminComponent implements OnInit {
   addingUser = false;
   newUser = { userId: '', name: '', location: 'TVM', isAdmin: false };
 
+  selectedUser: any = null;
+  userPredictions: any[] = [];
+  loadingUserPreds = false;
+  userPredTotalPoints = 0;
+
   uploadFile: File | null = null;
   uploadFileName = '';
   uploading = false;
   uploadMessage = '';
   uploadSuccess = false;
+
+  // Tournament
+  tournResult: TournamentResult = { goldenBall: '', goldenBoot: '', goldenGlove: '', youngPlayer: '', fairPlayTeam: '' };
+  savingTournResult = false;
+  tournResultMsg = '';
+  tournResultSuccess = false;
+  tournPredictions: TournamentPrediction[] = [];
+  filteredTournPredictions: TournamentPrediction[] = [];
+  tournSearch = '';
+  loadingTournPreds = false;
+  tournAllPlayers: string[] = [];
+  private tournAllPlayerObjects: WcPlayer[] = [];
+  tournAllTeams: string[] = [];
+  tournFiltered: Record<string, string[]> = { goldenBall: [], goldenBoot: [], goldenGlove: [], youngPlayer: [] };
+  tournFilteredTeams: string[] = [];
+  private tournResultSaved: TournamentResult | null = null;
+  tournamentOpen = true;
+  togglingTournament = false;
 
   get tvmCount(): number { return this.allUsers.filter(u => u.location === 'TVM').length; }
   get puneCount(): number { return this.allUsers.filter(u => u.location === 'Pune').length; }
@@ -734,12 +1090,139 @@ export class AdminComponent implements OnInit {
   dbEditingId: any = null;
   dbEditRow: Record<string, any> = {};
 
+  activeTab: 'results' | 'users' | 'tournament' | 'db' = 'results';
+
   constructor(public auth: AuthService, private api: ApiService, private snackBar: MatSnackBar) {}
 
   ngOnInit(): void {
-    this.api.getMatches().subscribe(m => { this.buildMatchLabels(m); this.matches = m; this.filteredMatches = m; });
+    this.api.getMatches().subscribe(m => {
+      this.buildMatchLabels(m);
+      this.matches = m;
+      this.filteredMatches = m;
+    });
+    this.api.getAllTeams().subscribe(teams => {
+      this.tournAllTeams = teams.map((t: any) => t.teamName).filter(Boolean).sort();
+      this.tournFilteredTeams = this.tournAllTeams;
+    });
     this.loadUsers();
+    this.loadTournamentData();
+    this.api.isTournamentOpen().subscribe(r => { this.tournamentOpen = r.open; });
     if (this.auth.isSuperAdmin) this.api.getDbTables().subscribe(t => this.dbTables = t);
+  }
+
+  loadTournamentData(): void {
+    this.api.getAllPlayers().subscribe(p => {
+      this.tournAllPlayerObjects = p;
+      this.tournAllPlayers = [...new Set(p.map(x => x.playerName))].sort();
+      const keys = ['goldenBall', 'goldenBoot', 'goldenGlove', 'youngPlayer'];
+      keys.forEach(k => { this.tournFiltered[k] = this.tournAllPlayers; });
+    });
+    this.api.getTournamentResult().subscribe(r => {
+      if (r) {
+        this.tournResult = { ...r };
+        this.tournResultSaved = { ...r };
+      }
+    });
+    this.loadingTournPreds = true;
+    this.api.getAllTournamentPredictions().subscribe({
+      next: preds => {
+        this.tournPredictions = preds || [];
+        this.filteredTournPredictions = this.tournPredictions;
+        this.loadingTournPreds = false;
+      },
+      error: () => { this.loadingTournPreds = false; }
+    });
+  }
+
+  filterTournPlayers(key: string): void {
+    const s = (this.tournResult as any)[key]?.toLowerCase().trim() || '';
+    this.tournFiltered[key] = s ? this.tournAllPlayers.filter(p => p.toLowerCase().includes(s)) : this.tournAllPlayers;
+  }
+
+  filterTournTeams(): void {
+    const s = this.tournResult.fairPlayTeam?.toLowerCase().trim() || '';
+    this.tournFilteredTeams = s ? this.tournAllTeams.filter(t => t.toLowerCase().includes(s)) : this.tournAllTeams;
+  }
+
+  onTournSelect(key: string, value: string): void {
+    (this.tournResult as any)[key] = value;
+  }
+
+  onTournBlur(key: string): void {
+    const val = (this.tournResult as any)[key];
+    if (val && !this.tournAllPlayers.includes(val)) {
+      (this.tournResult as any)[key] = '';
+    }
+  }
+
+  onTournTeamBlur(): void {
+    if (this.tournResult.fairPlayTeam && !this.tournAllTeams.includes(this.tournResult.fairPlayTeam)) {
+      this.tournResult.fairPlayTeam = '';
+    }
+  }
+
+  tournTeamFor(playerName: string): string {
+    return this.tournAllPlayerObjects.find(p => p.playerName === playerName)?.team || '';
+  }
+
+  toggleTournamentOpen(): void {
+    this.togglingTournament = true;
+    this.api.setTournamentOpen(!this.tournamentOpen).subscribe({
+      next: (res) => {
+        this.tournamentOpen = res.open;
+        this.togglingTournament = false;
+        this.snackBar.open(res.message, '✓', { duration: 2500 });
+      },
+      error: () => { this.togglingTournament = false; }
+    });
+  }
+
+  saveTournamentResult(): void {
+    this.savingTournResult = true;
+    this.tournResultMsg = '';
+    this.api.saveTournamentResult(this.tournResult).subscribe({
+      next: (res) => {
+        this.savingTournResult = false;
+        this.tournResultSuccess = true;
+        this.tournResultMsg = res.message || 'Results saved';
+        this.tournResultSaved = { ...this.tournResult };
+        this.loadingTournPreds = true;
+        this.api.getAllTournamentPredictions().subscribe({
+          next: preds => {
+            this.tournPredictions = preds || [];
+            this.filterTournPredictions();
+            this.loadingTournPreds = false;
+          },
+          error: () => { this.loadingTournPreds = false; }
+        });
+      },
+      error: () => {
+        this.savingTournResult = false;
+        this.tournResultSuccess = false;
+        this.tournResultMsg = 'Error saving tournament result';
+      }
+    });
+  }
+
+  filterTournPredictions(): void {
+    const s = this.tournSearch.toLowerCase().trim();
+    this.filteredTournPredictions = s
+      ? this.tournPredictions.filter(p =>
+          p.userId.toLowerCase().includes(s) ||
+          (p.userName || '').toLowerCase().includes(s))
+      : this.tournPredictions;
+  }
+
+  get hasResult(): boolean {
+    const r = this.tournResultSaved;
+    return !!(r?.goldenBall && r?.goldenBoot && r?.goldenGlove && r?.youngPlayer && r?.fairPlayTeam);
+  }
+
+  isCorrect(tp: TournamentPrediction, key: string): boolean {
+    if (!this.tournResultSaved) return false;
+    const pred = (tp as any)[key];
+    const actual = (this.tournResultSaved as any)[key];
+    return !!(pred && actual && pred === actual);
   }
 
   loadUsers(): void {
@@ -766,6 +1249,37 @@ export class AdminComponent implements OnInit {
       if (s && !u.name.toLowerCase().includes(s) && !u.userId.toLowerCase().includes(s)) return false;
       return true;
     });
+  }
+
+  openUserDetail(user: any): void {
+    if (user.isAdmin) return;
+    this.selectedUser = user;
+    this.userPredictions = [];
+    this.loadingUserPreds = true;
+    this.userPredTotalPoints = 0;
+    this.api.getMyPredictions(user.userId).subscribe({
+      next: (res) => {
+        this.userPredictions = (res.predictions || []).sort((a: any, b: any) =>
+          new Date(a.matchDateTime || '').getTime() - new Date(b.matchDateTime || '').getTime()
+        );
+        this.userPredTotalPoints = this.userPredictions.reduce((sum: number, p: any) => sum + (p.points ?? 0), 0);
+        this.loadingUserPreds = false;
+      },
+      error: () => { this.loadingUserPreds = false; }
+    });
+  }
+
+  closeUserDetail(): void {
+    this.selectedUser = null;
+    this.userPredictions = [];
+  }
+
+  formatUserPredResult(p: any): string {
+    if (!p.match || !p.matchResultPredicted) return p.matchResultPredicted || '—';
+    const [teamA, teamB] = (p.match as string).split(' vs ');
+    if (p.matchResultPredicted === 'TEAM_A_WIN') return (teamA || 'Team A') + ' win';
+    if (p.matchResultPredicted === 'TEAM_B_WIN') return (teamB || 'Team B') + ' win';
+    return p.matchResultPredicted;
   }
 
   onExcelSelected(event: Event): void {
@@ -1046,6 +1560,11 @@ export class AdminComponent implements OnInit {
   startDbEdit(row: any): void {
     this.dbEditingId = row['id'];
     this.dbEditRow = { ...row };
+    for (const col of this.dbSelectedTable?.columns || []) {
+      if (this.isBooleanCol(col, row)) {
+        this.dbEditRow[col] = this.dbEditRow[col] === true || this.dbEditRow[col] === 'true';
+      }
+    }
   }
 
   cancelDbEdit(): void {
@@ -1083,6 +1602,11 @@ export class AdminComponent implements OnInit {
 
   isNumericCol(col: string): boolean {
     return ['id', 'score_team_a', 'score_team_b', 'points'].includes(col);
+  }
+
+  isBooleanCol(col: string, row: any): boolean {
+    const BOOL_COLS = ['config_value', 'is_admin'];
+    return typeof row[col] === 'boolean' || BOOL_COLS.includes(col);
   }
 
   private emptyResult(): MatchResult {

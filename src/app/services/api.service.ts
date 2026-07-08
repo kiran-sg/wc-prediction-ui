@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { WcMatch, WcPlayer, WcUser, Prediction, MatchResult, LeaderboardEntry } from '../models/models';
+import { WcMatch, WcPlayer, WcUser, Prediction, MatchResult, LeaderboardEntry, TournamentPrediction, TournamentResult } from '../models/models';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -15,7 +15,16 @@ export class ApiService {
     return this.http.get<WcMatch[]>(`${this.api}/matches`);
   }
 
+  // Teams
+  getAllTeams(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.api}/teams`);
+  }
+
   // Players
+  getAllPlayers(): Observable<WcPlayer[]> {
+    return this.http.get<WcPlayer[]>(`${this.api}/players`);
+  }
+
   getPlayersByTeams(teams: string[]): Observable<WcPlayer[]> {
     return this.http.get<WcPlayer[]>(`${this.api}/players/teams`, { params: { teams } });
   }
@@ -85,6 +94,36 @@ export class ApiService {
     const form = new FormData();
     form.append('file', file);
     return this.http.post<any>(`${this.api}/admin/users/upload`, form);
+  }
+
+  // Tournament predictions
+  getTournamentPrediction(userId: string): Observable<{ prediction: TournamentPrediction | null }> {
+    return this.http.get<{ prediction: TournamentPrediction | null }>(`${this.api}/tournament/prediction`, { params: { userId } });
+  }
+
+  saveTournamentPrediction(pred: TournamentPrediction): Observable<{ status: boolean; message: string; prediction: TournamentPrediction }> {
+    return this.http.post<{ status: boolean; message: string; prediction: TournamentPrediction }>(`${this.api}/tournament/prediction`, pred);
+  }
+
+  getTournamentResult(): Observable<TournamentResult> {
+    return this.http.get<TournamentResult>(`${this.api}/tournament/result`);
+  }
+
+  saveTournamentResult(result: TournamentResult): Observable<{ status: boolean; message: string }> {
+    return this.http.post<{ status: boolean; message: string }>(`${this.api}/tournament/result`, result);
+  }
+
+  getAllTournamentPredictions(): Observable<TournamentPrediction[]> {
+    return this.http.get<TournamentPrediction[]>(`${this.api}/tournament/predictions`);
+  }
+
+  // App config
+  isTournamentOpen(): Observable<{ open: boolean }> {
+    return this.http.get<{ open: boolean }>(`${this.api}/config/tournament-open`);
+  }
+
+  setTournamentOpen(open: boolean): Observable<{ open: boolean; message: string }> {
+    return this.http.post<{ open: boolean; message: string }>(`${this.api}/admin/config/tournament-open`, { open });
   }
 
   // DB Config (superadmin)

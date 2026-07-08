@@ -62,3 +62,28 @@ export interface LeaderboardEntry {
   totalPoints: number;
   position: number;
 }
+
+export interface TournamentPrediction {
+  id?: number;
+  userId: string;
+  userName?: string;
+  goldenBall: string;
+  goldenBoot: string;
+  goldenGlove: string;
+  youngPlayer: string;
+  fairPlayTeam: string;
+  goldenBallPoints?: number;
+  goldenBootPoints?: number;
+  goldenGlovePoints?: number;
+  youngPlayerPoints?: number;
+  fairPlayPoints?: number;
+  totalPoints?: number;
+}
+
+export interface TournamentResult {
+  goldenBall: string;
+  goldenBoot: string;
+  goldenGlove: string;
+  youngPlayer: string;
+  fairPlayTeam: string;
+}

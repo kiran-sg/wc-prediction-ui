@@ -9,7 +9,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatButtonModule } from '@angular/material/button';
 import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
-import { Prediction, MatchResult } from '../../models/models';
+import { Prediction, MatchResult, TournamentPrediction } from '../../models/models';
 
 interface PredictionRow {
   prediction: Prediction;
@@ -42,8 +42,12 @@ interface PredictionRow {
             <span class="summary-num">{{ scoredCount }}</span>
             <span class="summary-label">Scored</span>
           </div>
+          <div class="summary-item">
+            <span class="summary-num">{{ tournamentPoints }}</span>
+            <span class="summary-label">Tourn. pts</span>
+          </div>
           <div class="summary-item highlight">
-            <span class="summary-num">{{ totalPoints }}</span>
+            <span class="summary-num">{{ totalPoints + tournamentPoints }}</span>
             <span class="summary-label">Total pts</span>
           </div>
         </div>
@@ -219,11 +223,16 @@ export class MyPredictionsComponent implements OnInit {
   loading = true;
   totalPoints = 0;
   scoredCount = 0;
+  tournamentPoints = 0;
 
   constructor(public router: Router, private api: ApiService, private auth: AuthService) {}
 
   ngOnInit(): void {
     const userId = this.auth.currentUser!.userId;
+    this.api.getTournamentPrediction(userId).subscribe({
+      next: (res) => { this.tournamentPoints = res.prediction?.totalPoints ?? 0; },
+      error: () => {}
+    });
     this.api.getMyPredictions(userId).subscribe({
       next: (res) => {
         const predictions = res.predictions || [];

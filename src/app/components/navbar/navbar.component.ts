@@ -32,9 +32,13 @@ import { AuthService } from '../../services/auth.service';
               <mat-icon>assignment</mat-icon>
               <span class="nav-label">My Picks</span>
             </a>
+            <a routerLink="/tournament" routerLinkActive="active" class="nav-item">
+              <mat-icon>emoji_events</mat-icon>
+              <span class="nav-label">Tournament</span>
+            </a>
           }
           <a routerLink="/leaderboard" routerLinkActive="active" class="nav-item">
-            <mat-icon>emoji_events</mat-icon>
+            <mat-icon>leaderboard</mat-icon>
             <span class="nav-label">Leaderboard</span>
           </a>
         </nav>
@@ -92,9 +96,13 @@ import { AuthService } from '../../services/auth.service';
               <mat-icon>assignment</mat-icon>
               <span>My Picks</span>
             </a>
+            <a routerLink="/tournament" routerLinkActive="active" class="drawer-item" (click)="closeDrawer()">
+              <mat-icon>emoji_events</mat-icon>
+              <span>Tournament Predictions</span>
+            </a>
           }
           <a routerLink="/leaderboard" routerLinkActive="active" class="drawer-item" (click)="closeDrawer()">
-            <mat-icon>emoji_events</mat-icon>
+            <mat-icon>leaderboard</mat-icon>
             <span>Leaderboard</span>
           </a>
           <button class="drawer-item logout" (click)="logout()">
