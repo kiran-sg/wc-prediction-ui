@@ -27,8 +27,8 @@ const STAGE_FULL: Record<string, string> = {
       <h3 class="page-title">FIFA WC 2026 Prediction Contest</h3>
 
       <!-- Tournament prediction banner -->
-      @if (!auth.isAdmin) {
-        <div class="tourn-banner" [class.done]="hasTournamentPrediction" [class.closed]="!tournamentOpen" (click)="router.navigate(['/tournament'])">
+      @if (!auth.isAdmin && tournamentOpen) {
+        <div class="tourn-banner" [class.done]="hasTournamentPrediction" [class.closed]="!tournamentOpen" (click)="tournamentOpen && router.navigate(['/tournament'])">
           <span class="tourn-banner-icon">🏆</span>
           <div class="tourn-banner-text">
             <span class="tourn-banner-title">Tournament Predictions</span>
@@ -117,7 +117,8 @@ const STAGE_FULL: Record<string, string> = {
     }
     .tourn-banner:active { opacity: 0.85; }
     .tourn-banner.done { background: linear-gradient(135deg, #1b5e20, #388e3c); }
-    .tourn-banner.closed { background: linear-gradient(135deg, #37474f, #546e7a); }
+    .tourn-banner.closed { background: linear-gradient(135deg, #37474f, #546e7a); cursor: default; }
+    .tourn-banner.closed:active { opacity: 1; }
     .tourn-banner-icon { font-size: 28px; flex-shrink: 0; line-height: 1; }
     .tourn-banner-text { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
     .tourn-banner-title { font-size: 14px; font-weight: 700; }
