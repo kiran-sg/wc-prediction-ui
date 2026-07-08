@@ -16,6 +16,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { forkJoin } from 'rxjs';
 import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
 import { WcMatch, WcPlayer, MatchResult, Prediction, TournamentResult, TournamentPrediction } from '../../models/models';
@@ -372,34 +373,62 @@ const STAGE_FULL: Record<string, string> = {
                   <p>No predictions submitted yet.</p>
                 </div>
               } @else {
-                @for (p of userPredictions; track p.predictionId) {
-                  <div class="pred-row" [class.has-points]="p.points != null">
-                    <div class="pred-user">
-                      <div class="user-details" style="flex:1">
-                        <span class="user-name">{{ p.match || p.matchId }}</span>
-                        <span class="user-id">{{ p.matchDate }}</span>
+                @for (row of userPredRows; track row.prediction.predictionId) {
+                  <div class="up-card">
+                    <div class="up-header">
+                      <div class="up-match-info">
+                        @if (matchLabelForId(row.prediction.matchId)) {
+                          <span class="up-match-label">{{ matchLabelForId(row.prediction.matchId) }}</span>
+                        }
+                        <span class="up-match">{{ row.prediction.match || row.prediction.matchId }}</span>
                       </div>
-                      @if (p.points != null) {
-                        <span class="pts-chip" [class.zero]="p.points === 0" [class.max]="p.points >= 13">
-                          {{ p.points }} pts
+                      <span class="up-date">{{ row.prediction.matchDate }}</span>
+                      @if (row.prediction.points != null && row.result) {
+                        <span class="pts-chip" [class.zero]="row.prediction.points === 0" [class.max]="row.prediction.points >= 13">
+                          {{ row.prediction.points }} pts
                         </span>
                       } @else {
                         <span class="pts-chip pending">Pending</span>
                       }
                     </div>
-                    <div class="pred-answers">
-                      <div class="ans-cell">
-                        <span class="ans-label">Who progresses</span>
-                        <span class="ans-val">{{ formatUserPredResult(p) }}</span>
-                      </div>
-                      <div class="ans-cell">
-                        <span class="ans-label">Score</span>
-                        <span class="ans-val">{{ p.scoreTeamAPredicted }} – {{ p.scoreTeamBPredicted }}</span>
-                      </div>
-                      <div class="ans-cell">
-                        <span class="ans-label">Goalscorer</span>
-                        <span class="ans-val">{{ p.winningGoalscorerPredicted || '—' }}</span>
-                      </div>
+                    <div class="up-grid-header">
+                      <span></span>
+                      <span class="up-col">Your Pick</span>
+                      <span class="up-col">Actual</span>
+                      <span class="up-col-icon"></span>
+                    </div>
+                    <div class="up-grid-row" [class.correct]="upq1Correct(row)" [class.wrong]="row.result && !upq1Correct(row)">
+                      <span class="up-q-label">Who progresses</span>
+                      <span class="up-q-val">{{ formatUserPredResult(row.prediction) }}</span>
+                      <span class="up-q-val actual">{{ formatActualResult(row.result, row.prediction.match) }}</span>
+                      <span class="up-q-status">
+                        @if (row.result) {
+                          @if (upq1Correct(row)) { <mat-icon class="icon-correct">check_circle</mat-icon> }
+                          @else { <mat-icon class="icon-wrong">cancel</mat-icon> }
+                        } @else { <span class="dots">•••</span> }
+                      </span>
+                    </div>
+                    <div class="up-grid-row" [class.correct]="upq2Correct(row)" [class.wrong]="row.result && !upq2Correct(row)">
+                      <span class="up-q-label">Exact score</span>
+                      <span class="up-q-val">{{ row.prediction.scoreTeamAPredicted }} – {{ row.prediction.scoreTeamBPredicted }}</span>
+                      <span class="up-q-val actual">{{ row.result ? (row.result.scoreTeamA + ' – ' + row.result.scoreTeamB) : '—' }}</span>
+                      <span class="up-q-status">
+                        @if (row.result) {
+                          @if (upq2Correct(row)) { <mat-icon class="icon-correct">check_circle</mat-icon> }
+                          @else { <mat-icon class="icon-wrong">cancel</mat-icon> }
+                        } @else { <span class="dots">•••</span> }
+                      </span>
+                    </div>
+                    <div class="up-grid-row" [class.correct]="upq3Correct(row)" [class.wrong]="row.result && !upq3Correct(row)">
+                      <span class="up-q-label">Goalscorer</span>
+                      <span class="up-q-val">{{ row.prediction.winningGoalscorerPredicted || '—' }}</span>
+                      <span class="up-q-val actual">{{ row.result?.winningGoalscorer || '—' }}</span>
+                      <span class="up-q-status">
+                        @if (row.result) {
+                          @if (upq3Correct(row)) { <mat-icon class="icon-correct">check_circle</mat-icon> }
+                          @else { <mat-icon class="icon-wrong">cancel</mat-icon> }
+                        } @else { <span class="dots">•••</span> }
+                      </span>
                     </div>
                   </div>
                 }
@@ -913,6 +942,37 @@ const STAGE_FULL: Record<string, string> = {
     .ans-cell.correct .ans-icon { color: #43a047; }
     .ans-cell.wrong .ans-icon { color: #e53935; }
 
+    /* User prediction detail rows */
+    .up-card { background: #fff; border-radius: 10px; margin-bottom: 10px; border: 1px solid #e0e0e0; overflow: hidden; }
+    .up-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 14px; background: #fafafa; border-bottom: 1px solid #eee;
+    }
+    .up-match-info { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+    .up-match-label { font-size: 10px; font-weight: 700; color: #7986cb; text-transform: uppercase; letter-spacing: 0.5px; }
+    .up-match { font-weight: 600; font-size: 13px; color: #1a237e; }
+    .up-date { font-size: 11px; color: #999; }
+    .up-grid-header {
+      display: grid; grid-template-columns: 90px 1fr 1fr 24px;
+      padding: 5px 12px; background: #fafafa; border-bottom: 1px solid #eee;
+    }
+    .up-col { font-size: 10px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 0.4px; }
+    .up-col-icon {}
+    .up-grid-row {
+      display: grid; grid-template-columns: 90px 1fr 1fr 24px;
+      padding: 9px 12px; border-bottom: 1px solid #f0f0f0; align-items: center; gap: 4px;
+    }
+    .up-grid-row:last-child { border-bottom: none; }
+    .up-grid-row.correct { background: #f1f8e9; }
+    .up-grid-row.wrong { background: #fce4ec; }
+    .up-q-label { font-size: 11px; color: #555; font-weight: 600; }
+    .up-q-val { font-size: 12px; color: #222; word-break: break-word; }
+    .up-q-val.actual { color: #1a237e; font-weight: 500; }
+    .up-q-status { display: flex; justify-content: center; align-items: center; }
+    .icon-correct { color: #43a047; font-size: 18px; width: 18px; height: 18px; }
+    .icon-wrong { color: #e53935; font-size: 18px; width: 18px; height: 18px; }
+    .dots { color: #bbb; font-size: 14px; letter-spacing: 2px; }
+
     .user-search-bar {
       display: flex; align-items: center; gap: 8px;
       background: #f5f5f5; border-radius: 10px; padding: 10px 12px;
@@ -1043,6 +1103,7 @@ export class AdminComponent implements OnInit {
 
   selectedUser: any = null;
   userPredictions: any[] = [];
+  userPredRows: { prediction: any; result: MatchResult | null }[] = [];
   loadingUserPreds = false;
   userPredTotalPoints = 0;
 
@@ -1255,15 +1316,27 @@ export class AdminComponent implements OnInit {
     if (user.isAdmin) return;
     this.selectedUser = user;
     this.userPredictions = [];
+    this.userPredRows = [];
     this.loadingUserPreds = true;
     this.userPredTotalPoints = 0;
     this.api.getMyPredictions(user.userId).subscribe({
       next: (res) => {
-        this.userPredictions = (res.predictions || []).sort((a: any, b: any) =>
+        const preds = (res.predictions || []).sort((a: any, b: any) =>
           new Date(a.matchDateTime || '').getTime() - new Date(b.matchDateTime || '').getTime()
         );
-        this.userPredTotalPoints = this.userPredictions.reduce((sum: number, p: any) => sum + (p.points ?? 0), 0);
-        this.loadingUserPreds = false;
+        this.userPredictions = preds;
+        this.userPredTotalPoints = preds.reduce((sum: number, p: any) => sum + (p.points ?? 0), 0);
+        if (preds.length === 0) { this.loadingUserPreds = false; return; }
+        forkJoin(preds.map((p: any) => this.api.getMatchResult(p.matchId))).subscribe({
+          next: (results: any[]) => {
+            this.userPredRows = preds.map((p: any, i: number) => ({ prediction: p, result: results[i].matchResult }));
+            this.loadingUserPreds = false;
+          },
+          error: () => {
+            this.userPredRows = preds.map((p: any) => ({ prediction: p, result: null }));
+            this.loadingUserPreds = false;
+          }
+        });
       },
       error: () => { this.loadingUserPreds = false; }
     });
@@ -1272,6 +1345,7 @@ export class AdminComponent implements OnInit {
   closeUserDetail(): void {
     this.selectedUser = null;
     this.userPredictions = [];
+    this.userPredRows = [];
   }
 
   formatUserPredResult(p: any): string {
@@ -1280,6 +1354,34 @@ export class AdminComponent implements OnInit {
     if (p.matchResultPredicted === 'TEAM_A_WIN') return (teamA || 'Team A') + ' win';
     if (p.matchResultPredicted === 'TEAM_B_WIN') return (teamB || 'Team B') + ' win';
     return p.matchResultPredicted;
+  }
+
+  matchLabelForId(matchId: string): string {
+    const m = this.matches.find(x => x.matchNo === matchId);
+    return m ? this.matchLabel(m) : '';
+  }
+
+  formatActualResult(result: MatchResult | null, matchName: string): string {
+    if (!result) return '—';
+    if (result.matchResult === 'TEAM_A_WIN') return matchName.split(' vs ')[0] + ' win';
+    if (result.matchResult === 'TEAM_B_WIN') return matchName.split(' vs ')[1] + ' win';
+    if (result.matchResult === 'DRAW') return 'Draw';
+    return result.matchResult || '—';
+  }
+
+  upq1Correct(row: { prediction: any; result: MatchResult | null }): boolean {
+    return !!row.result && row.prediction.matchResultPredicted === row.result.matchResult;
+  }
+
+  upq2Correct(row: { prediction: any; result: MatchResult | null }): boolean {
+    return !!row.result &&
+      row.prediction.scoreTeamAPredicted === row.result.scoreTeamA &&
+      row.prediction.scoreTeamBPredicted === row.result.scoreTeamB;
+  }
+
+  upq3Correct(row: { prediction: any; result: MatchResult | null }): boolean {
+    return !!row.result && !!row.prediction.winningGoalscorerPredicted &&
+      row.prediction.winningGoalscorerPredicted === row.result.winningGoalscorer;
   }
 
   onExcelSelected(event: Event): void {
