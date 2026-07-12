@@ -71,7 +71,28 @@ import { WcMatch, WcPlayer, Prediction } from '../../models/models';
             <!-- Q3: Winning Goalscorer -->
             <mat-card class="section-card">
               <h4>Winning goalscorer</h4>
-              <p class="hint">Predict the player who scores the goal that gives the winning team a lead they never relinquish. Shootout goals are excluded.<br><br><em>Example: If the score is 2–2 and a player scores to make it 3–2, and the match ends 4–2 — the 3rd goal scorer of the winning team is the Winning Goalscorer. If the match ends 4–3, then the 4th goal scorer of the winning team is the Winning Goalscorer.</em></p>
+              <p class="hint">Predict the player who scores the goal that gives the winning team a lead they never relinquish. Shootout goals are excluded.<br><br><em>Example: Score is 2–2 → player scores to make it 3–2 → match ends 4–2: scorer of the 3rd goal is the Winning Goalscorer. If match ends 4–3, scorer of the 4th goal is the Winning Goalscorer.</em></p>
+              <div class="own-goal-rule">
+                <button type="button" mat-button class="own-goal-toggle" (click)="showOwnGoalRule = !showOwnGoalRule">
+                  <mat-icon>{{ showOwnGoalRule ? 'expand_less' : 'expand_more' }}</mat-icon>
+                  Own Goal Exception
+                </button>
+                @if (showOwnGoalRule) {
+                  <div class="own-goal-content">
+                    <p>If the decisive goal is an own goal, the Winning Goalscorer is instead:</p>
+                    <ul>
+                      <li>The scorer of the <strong>first real goal by the winning team after</strong> that own goal</li>
+                      <li>If no real goals follow (e.g. multiple own goals decided the match), then the scorer of the winning team's <strong>most recent real goal before</strong> the first own goal</li>
+                    </ul>
+                    <p class="own-goal-ex-label"><strong>Examples</strong></p>
+                    <ul>
+                      <li>3–3 → own goal (4–3) → winning team scores to make 5–3 → ends 5–3: <strong>scorer of the 5–3 goal</strong></li>
+                      <li>3–3 → own goal (4–3) → winning team scores 5–3, then 6–3 → ends 6–3: <strong>still scorer of 5–3</strong> (first real goal after the own goal)</li>
+                      <li>3–3 → own goal (4–3) → own goal (5–3) → ends 5–3 (no real goal from winning team after 3–3): <strong>scorer of the winning team's most recent real goal before the own goal</strong></li>
+                    </ul>
+                  </div>
+                }
+              </div>
               <mat-form-field appearance="outline" class="full-width">
                 <mat-label>Search player</mat-label>
                 <mat-icon matPrefix>search</mat-icon>
@@ -146,9 +167,18 @@ import { WcMatch, WcPlayer, Prediction } from '../../models/models';
       text-align: center; margin-top: 12px; padding: 10px;
       background: #e8f5e9; color: #2e7d32; border-radius: 8px; font-weight: 700; font-size: 20px;
     }
+    .own-goal-rule { margin-top: 10px; border-top: 1px solid #e0e0e0; padding-top: 6px; }
+    .own-goal-toggle { font-size: 12px; color: #555; padding: 0 4px; min-height: 32px; display: flex; align-items: center; gap: 2px; }
+    .own-goal-toggle mat-icon { font-size: 18px; height: 18px; width: 18px; }
+    .own-goal-content { background: #f5f5f5; border-radius: 8px; padding: 12px 14px; margin-top: 6px; font-size: 12px; color: #444; line-height: 1.6; }
+    .own-goal-content p { margin: 0 0 8px; }
+    .own-goal-content ul { margin: 0 0 8px; padding-left: 18px; }
+    .own-goal-content li { margin-bottom: 6px; }
+    .own-goal-ex-label { margin-top: 10px !important; }
     @media (max-width: 400px) {
       .team-name { font-size: 14px; }
       .section-card { padding: 12px; }
+      .own-goal-content { padding: 10px 12px; }
     }
   `]
 })
@@ -161,6 +191,7 @@ export class PredictComponent implements OnInit {
   locked = false;
   existing = false;
   saving = false;
+  showOwnGoalRule = false;
 
   constructor(
     private route: ActivatedRoute,
