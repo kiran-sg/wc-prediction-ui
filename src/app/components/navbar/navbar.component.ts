@@ -6,7 +6,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { AuthService } from '../../services/auth.service';
-import { ApiService } from '../../services/api.service';
 
 @Component({
   selector: 'app-navbar',
@@ -33,12 +32,10 @@ import { ApiService } from '../../services/api.service';
               <mat-icon>assignment</mat-icon>
               <span class="nav-label">My Picks</span>
             </a>
-            @if (tournamentOpen) {
-              <a routerLink="/tournament" routerLinkActive="active" class="nav-item">
-                <mat-icon>emoji_events</mat-icon>
-                <span class="nav-label">Tournament</span>
-              </a>
-            }
+            <a routerLink="/tournament" routerLinkActive="active" class="nav-item">
+              <mat-icon>emoji_events</mat-icon>
+              <span class="nav-label">Tournament</span>
+            </a>
           }
           <a routerLink="/leaderboard" routerLinkActive="active" class="nav-item">
             <mat-icon>leaderboard</mat-icon>
@@ -99,12 +96,10 @@ import { ApiService } from '../../services/api.service';
               <mat-icon>assignment</mat-icon>
               <span>My Picks</span>
             </a>
-            @if (tournamentOpen) {
-              <a routerLink="/tournament" routerLinkActive="active" class="drawer-item" (click)="closeDrawer()">
-                <mat-icon>emoji_events</mat-icon>
-                <span>Tournament Predictions</span>
-              </a>
-            }
+            <a routerLink="/tournament" routerLinkActive="active" class="drawer-item" (click)="closeDrawer()">
+              <mat-icon>emoji_events</mat-icon>
+              <span>Tournament Predictions</span>
+            </a>
           }
           <a routerLink="/leaderboard" routerLinkActive="active" class="drawer-item" (click)="closeDrawer()">
             <mat-icon>leaderboard</mat-icon>
@@ -207,17 +202,12 @@ import { ApiService } from '../../services/api.service';
 })
 export class NavbarComponent implements OnInit {
   drawerOpen = false;
-  tournamentOpen = true;
   private touchStartX = 0;
   private touchStartY = 0;
 
-  constructor(public auth: AuthService, private api: ApiService) {}
+  constructor(public auth: AuthService) {}
 
-  ngOnInit(): void {
-    if (this.auth.isLoggedIn) {
-      this.api.isTournamentOpen().subscribe(r => { this.tournamentOpen = r.open; });
-    }
-  }
+  ngOnInit(): void {}
 
   toggleDrawer(): void {
     this.drawerOpen = !this.drawerOpen;
