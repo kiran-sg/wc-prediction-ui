@@ -96,6 +96,10 @@ export class ApiService {
     return this.http.post<any>(`${this.api}/admin/users/upload`, form);
   }
 
+  updateMissedPoints(userId: string, missedPoints: number): Observable<any> {
+    return this.http.patch<any>(`${this.api}/admin/users/${userId}/missed-points`, { missedPoints });
+  }
+
   // Tournament predictions
   getTournamentPrediction(userId: string): Observable<{ prediction: TournamentPrediction | null }> {
     return this.http.get<{ prediction: TournamentPrediction | null }>(`${this.api}/tournament/prediction`, { params: { userId } });

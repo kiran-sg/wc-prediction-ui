@@ -4,6 +4,7 @@ export interface WcUser {
   location: string;
   isAdmin: boolean;
   isSuperAdmin?: boolean;
+  missedPoints?: number;
 }
 
 export interface WcMatch {

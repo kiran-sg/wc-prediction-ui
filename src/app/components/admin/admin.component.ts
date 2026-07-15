@@ -444,16 +444,37 @@ const STAGE_FULL: Record<string, string> = {
                   <span class="summary-chip q1" [class.active]="locationFilter === 'Pune'" (click)="setLocationFilter('Pune')">{{ puneCount }} Pune</span>
                 </div>
                 @for (u of filteredUsers; track u.userId) {
-                  <div class="user-row clickable" (click)="openUserDetail(u)">
+                  <div class="user-row" [class.clickable]="editingMissedPointsUserId !== u.userId"
+                       (click)="editingMissedPointsUserId !== u.userId && openUserDetail(u)">
                     <mat-icon class="user-row-icon">account_circle</mat-icon>
                     <div class="user-row-info">
                       <span class="user-row-name">{{ u.name }}</span>
                       <span class="user-row-meta">{{ u.userId }} · {{ u.location }}</span>
                     </div>
-                    @if (u.isAdmin) {
-                      <span class="admin-chip">Admin</span>
+                    @if (!u.isAdmin) {
+                      @if (editingMissedPointsUserId === u.userId) {
+                        <div class="missed-pts-edit" (click)="$event.stopPropagation()">
+                          <input class="missed-pts-input" type="number" min="0"
+                                 [(ngModel)]="missedPointsEditValue"
+                                 (keyup.enter)="saveMissedPoints(u)"
+                                 (keyup.escape)="cancelEditMissedPoints()">
+                          <button class="db-action-btn save" (click)="saveMissedPoints(u)" [disabled]="savingMissedPoints" title="Save">
+                            <mat-icon>check</mat-icon>
+                          </button>
+                          <button class="db-action-btn cancel" (click)="cancelEditMissedPoints()" title="Cancel">
+                            <mat-icon>close</mat-icon>
+                          </button>
+                        </div>
+                      } @else {
+                        <button class="missed-pts-btn" (click)="$event.stopPropagation(); startEditMissedPoints(u)"
+                                [class.has-bonus]="u.missedPoints > 0"
+                                title="Edit missed points">
+                          +{{ u.missedPoints ?? 0 }}
+                        </button>
+                        <mat-icon class="user-row-chevron">chevron_right</mat-icon>
+                      }
                     } @else {
-                      <mat-icon class="user-row-chevron">chevron_right</mat-icon>
+                      <span class="admin-chip">Admin</span>
                     }
                   </div>
                 }
@@ -1067,6 +1088,23 @@ const STAGE_FULL: Record<string, string> = {
     .db-action-btn:hover { background: #f0f0f0; }
     .db-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
     .db-page-info { font-size: 12px; color: #888; margin-right: 4px; }
+
+    /* Missed points */
+    .missed-pts-btn {
+      border: 1px solid #e0e0e0; background: #f5f5f5; border-radius: 8px;
+      padding: 3px 8px; font-size: 12px; font-weight: 600; color: #888;
+      cursor: pointer; white-space: nowrap; flex-shrink: 0;
+    }
+    .missed-pts-btn:hover { border-color: #9fa8da; background: #e8eaf6; color: #3949ab; }
+    .missed-pts-btn.has-bonus { background: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; }
+    .missed-pts-edit {
+      display: flex; align-items: center; gap: 4px; flex-shrink: 0;
+    }
+    .missed-pts-input {
+      width: 56px; border: 1px solid #90caf9; border-radius: 6px;
+      padding: 4px 6px; font-size: 13px; outline: none; background: #fff; text-align: center;
+    }
+    .missed-pts-input:focus { border-color: #1a237e; }
   `]
 })
 export class AdminComponent implements OnInit {
@@ -1100,6 +1138,10 @@ export class AdminComponent implements OnInit {
   loadingUsers = false;
   addingUser = false;
   newUser = { userId: '', name: '', location: 'TVM', isAdmin: false };
+
+  editingMissedPointsUserId: string | null = null;
+  missedPointsEditValue = 0;
+  savingMissedPoints = false;
 
   selectedUser: any = null;
   userPredictions: any[] = [];
@@ -1430,6 +1472,32 @@ export class AdminComponent implements OnInit {
     });
   }
 
+  startEditMissedPoints(u: any): void {
+    this.editingMissedPointsUserId = u.userId;
+    this.missedPointsEditValue = u.missedPoints ?? 0;
+  }
+
+  cancelEditMissedPoints(): void {
+    this.editingMissedPointsUserId = null;
+  }
+
+  saveMissedPoints(u: any): void {
+    if (this.missedPointsEditValue < 0) return;
+    this.savingMissedPoints = true;
+    this.api.updateMissedPoints(u.userId, this.missedPointsEditValue).subscribe({
+      next: () => {
+        u.missedPoints = this.missedPointsEditValue;
+        this.editingMissedPointsUserId = null;
+        this.savingMissedPoints = false;
+        this.snackBar.open(`Missed points updated for ${u.name}`, '✓', { duration: 2500 });
+      },
+      error: () => {
+        this.savingMissedPoints = false;
+        this.snackBar.open('Failed to update missed points', 'OK', { duration: 3000 });
+      }
+    });
+  }
+
   private buildMatchLabels(matches: WcMatch[]): void {
     const counters: Record<string, number> = {};
     const stageOrder = ['R32', 'R16', 'QF', 'SF', 'LF', 'FINAL'];
@@ -1703,11 +1771,11 @@ export class AdminComponent implements OnInit {
   }
 
   isNumericCol(col: string): boolean {
-    return ['id', 'score_team_a', 'score_team_b', 'points'].includes(col);
+    return ['id', 'score_team_a', 'score_team_b', 'points', 'missed_points'].includes(col);
   }
 
   isBooleanCol(col: string, row: any): boolean {
-    const BOOL_COLS = ['config_value', 'is_admin'];
+    const BOOL_COLS = ['config_value', 'is_admin', 'is_super_admin'];
     return typeof row[col] === 'boolean' || BOOL_COLS.includes(col);
   }
 
